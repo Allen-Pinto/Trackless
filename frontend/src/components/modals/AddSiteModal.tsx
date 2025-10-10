@@ -56,7 +56,7 @@ export const AddSiteModal = ({ isOpen, onClose, onSiteAdded }: AddSiteModalProps
         } catch (snippetError: any) {
           console.warn('Failed to get tracking snippet:', snippetError);
           // Still show success even if snippet fails
-          setTrackingSnippet(`<script async src="http://localhost:5001/tracker.js" data-site-id="${site.siteId}"></script>`);
+          setTrackingSnippet(`<script async src="https://trackless-fxoj.onrender.com/tracker.js" data-site-id="${site.siteId}"></script>`);
         }
         
         setStep('success');

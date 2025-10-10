@@ -16,7 +16,7 @@ export const config = {
   cors: {
     allowedOrigins: process.env.ALLOWED_ORIGINS
       ? process.env.ALLOWED_ORIGINS.split(',')
-      : ['http://localhost:3000', 'http://localhost:5001']
+      : ['http://localhost:3000', 'http://localhost:5001' , 'https://trackless-phi.vercel.app']
   },
   rateLimit: {
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 60000,
