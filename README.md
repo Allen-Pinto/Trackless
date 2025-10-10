@@ -87,7 +87,7 @@ Edit `.env`:
 ```env
 PORT=5000
 NODE_ENV=development
-MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/trackless
+MONGODB_URI=<mongo_url>
 JWT_SECRET=your-secret-key-here
 ALLOWED_ORIGINS=http://localhost:3000
 DATA_RETENTION_DAYS=90
