@@ -21,6 +21,10 @@ const userSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  avatar: {
+    type: String,
+    default: null
+  },
   
   // Account status
   isActive: {
@@ -81,12 +85,15 @@ userSchema.methods.comparePassword = async function(candidatePassword) {
 // Method to get public profile (without sensitive data)
 userSchema.methods.toPublicJSON = function() {
   return {
-    id: this._id,
+    _id: this._id,
     email: this.email,
     name: this.name,
+    avatar: this.avatar,
     isVerified: this.isVerified,
     maxSites: this.maxSites,
-    createdAt: this.createdAt
+    isActive: this.isActive,
+    createdAt: this.createdAt,
+    lastLogin: this.lastLogin
   };
 };
 

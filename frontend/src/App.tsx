@@ -18,6 +18,7 @@ const AppContent = () => {
   const [authPage, setAuthPage] = useState<AuthPage>('signin');
   const [currentPage, setCurrentPage] = useState<DashboardPage>('dashboard');
   const [isAddSiteModalOpen, setIsAddSiteModalOpen] = useState(false);
+  const [sitesRefreshKey, setSitesRefreshKey] = useState(0); // Add this state
 
   if (loading) {
     return (
@@ -67,7 +68,10 @@ const AppContent = () => {
       case 'dashboard':
         return <Dashboard />;
       case 'sites':
-        return <Sites onAddSite={() => setIsAddSiteModalOpen(true)} />;
+        return <Sites 
+          onAddSite={() => setIsAddSiteModalOpen(true)} 
+          refreshKey={sitesRefreshKey} // Pass refresh key to Sites component
+        />;
       case 'analytics':
         return <Analytics />;
       case 'settings':
@@ -90,12 +94,11 @@ const AppContent = () => {
       <AddSiteModal
         isOpen={isAddSiteModalOpen}
         onClose={() => setIsAddSiteModalOpen(false)}
-        // onSiteAdded={() => {
-        //   // Force refresh of sites page when a new site is added
-        //   if (currentPage === 'sites') {
-        //     window.location.reload();
-        //   }
-        // }}
+        onSiteAdded={() => {
+          // Instead of reloading, trigger a refresh of the sites data
+          setSitesRefreshKey(prev => prev + 1);
+          setIsAddSiteModalOpen(false);
+        }}
       />
     </>
   );

@@ -56,14 +56,23 @@ export const Sidebar = ({ currentPage, onNavigate }: SidebarProps) => {
 
       <div className="p-4 border-t border-gray-200">
         <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-lg mb-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-[#59A5D8] to-[#3B8CB8] rounded-full flex items-center justify-center">
-            <span className="text-white font-semibold text-sm">
-              {user?.email?.[0].toUpperCase() || 'U'}
-            </span>
-          </div>
+          {/* Profile Picture - Show avatar if exists, otherwise show initial */}
+          {user?.avatar ? (
+            <img 
+              src={user.avatar} 
+              alt={user.name}
+              className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm"
+            />
+          ) : (
+            <div className="w-10 h-10 bg-gradient-to-br from-[#59A5D8] to-[#3B8CB8] rounded-full flex items-center justify-center">
+              <span className="text-white font-semibold text-sm">
+                {user?.name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'U'}
+              </span>
+            </div>
+          )}
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-gray-900 truncate">
-              {user?.user_metadata?.name || 'User'}
+              {user?.name || 'User'}
             </p>
             <p className="text-xs text-gray-500 truncate">{user?.email}</p>
           </div>

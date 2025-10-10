@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
-import { User, Mail, Lock, Camera, RefreshCw } from 'lucide-react';
+import { User, Mail, Lock, Camera } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../contexts/AuthContext';
-import { authApi, validateToken } from '../lib/api';
+import { authApi } from '../lib/api';
 
 export const Settings = () => {
-  const { user, updateProfile, clearAuth } = useAuth();
+  const { user, updateProfile, updateProfilePicture, removeProfilePicture } = useAuth();
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
   const [currentPassword, setCurrentPassword] = useState('');
@@ -15,9 +15,11 @@ export const Settings = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [profileLoading, setProfileLoading] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
+  const [avatarLoading, setAvatarLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
-  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [isEditingName, setIsEditingName] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -43,6 +45,7 @@ export const Settings = () => {
         setError(error.message);
       } else {
         setMessage('Profile updated successfully!');
+        setIsEditingName(false);
       }
     } catch (err: any) {
       setError(err.message || 'Failed to update profile');
@@ -89,7 +92,7 @@ export const Settings = () => {
     }
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       // Validate file type
@@ -107,34 +110,52 @@ export const Settings = () => {
       // Create preview URL
       const reader = new FileReader();
       reader.onload = (event) => {
-        setProfileImage(event.target?.result as string);
+        setPreviewImage(event.target?.result as string);
       };
       reader.readAsDataURL(file);
 
+      // Upload the file to server
       setError('');
-      setMessage('Profile image uploaded successfully! (Note: Image storage not implemented yet)');
+      setMessage('');
+      setAvatarLoading(true);
+
+      try {
+        const { error } = await updateProfilePicture(file);
+        if (error) {
+          setError(error.message);
+          setPreviewImage(null);
+        } else {
+          setMessage('Profile picture updated successfully!');
+          setPreviewImage(null);
+        }
+      } catch (err: any) {
+        setError(err.message || 'Failed to upload profile picture');
+        setPreviewImage(null);
+      } finally {
+        setAvatarLoading(false);
+      }
     }
   };
 
-  const handleTestToken = async () => {
+  const handleRemoveProfilePicture = async () => {
+    if (!user?.avatar) return;
+
     setError('');
     setMessage('');
-    
+    setAvatarLoading(true);
+
     try {
-      const isValid = await validateToken();
-      if (isValid) {
-        setMessage('Token is valid!');
+      const { error } = await removeProfilePicture();
+      if (error) {
+        setError(error.message);
       } else {
-        setError('Token is invalid or expired');
+        setMessage('Profile picture removed successfully!');
       }
     } catch (err: any) {
-      setError('Token validation failed: ' + err.message);
+      setError(err.message || 'Failed to remove profile picture');
+    } finally {
+      setAvatarLoading(false);
     }
-  };
-
-  const handleClearAuth = () => {
-    clearAuth();
-    setMessage('Authentication cleared. You will be redirected to sign in.');
   };
 
   return (
@@ -149,9 +170,15 @@ export const Settings = () => {
           <h3 className="text-xl font-semibold text-gray-900 mb-4">Profile Picture</h3>
           <div className="flex flex-col items-center">
             <div className="relative mb-4">
-              {profileImage ? (
+              {previewImage ? (
                 <img
-                  src={profileImage}
+                  src={previewImage}
+                  alt="Profile Preview"
+                  className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-lg"
+                />
+              ) : user?.avatar ? (
+                <img
+                  src={user.avatar}
                   alt="Profile"
                   className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-lg"
                 />
@@ -168,26 +195,55 @@ export const Settings = () => {
                   type="file"
                   accept="image/*"
                   onChange={handleImageUpload}
+                  disabled={avatarLoading}
                   className="hidden"
                 />
               </label>
             </div>
-            <p className="text-sm text-gray-600 text-center">
+            <p className="text-sm text-gray-600 text-center mb-3">
               Click the camera icon to upload a new profile picture
             </p>
+            {user?.avatar && (
+              <Button
+                variant="secondary"
+                onClick={handleRemoveProfilePicture}
+                loading={avatarLoading}
+              >
+                Remove Picture
+              </Button>
+            )}
           </div>
         </Card>
 
         <Card className="lg:col-span-2">
           <h3 className="text-xl font-semibold text-gray-900 mb-4">User Information</h3>
           <form onSubmit={handleUpdateProfile} className="space-y-4">
-            <Input
-              type="text"
-              label="Full Name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              icon={<User className="w-5 h-5" />}
-            />
+            <div className="flex items-end gap-3">
+              <div className="flex-1">
+                <Input
+                  type="text"
+                  label="Full Name"
+                  value={name}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    setIsEditingName(true);
+                  }}
+                  icon={<User className="w-5 h-5" />}
+                />
+              </div>
+              {isEditingName && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    setName(user?.name || '');
+                    setIsEditingName(false);
+                  }}
+                >
+                  Cancel
+                </Button>
+              )}
+            </div>
 
             <Input
               type="email"
@@ -198,7 +254,7 @@ export const Settings = () => {
               disabled
             />
 
-            {(message || error) && !currentPassword && (
+            {(message || error) && !currentPassword && !avatarLoading && (
               <div className={`border-2 rounded-lg p-3 ${
                 error ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'
               }`}>
@@ -208,28 +264,13 @@ export const Settings = () => {
               </div>
             )}
 
-            <div className="flex justify-between gap-2">
-              <div className="flex gap-2">
-                <Button 
-                  type="button" 
-                  variant="secondary" 
-                  onClick={handleTestToken}
-                  icon={<RefreshCw className="w-4 h-4" />}
-                >
-                  Test Token
-                </Button>
-                <Button 
-                  type="button" 
-                  variant="secondary" 
-                  onClick={handleClearAuth}
-                >
-                  Clear Auth
+            {isEditingName && (
+              <div className="flex justify-end gap-2">
+                <Button type="submit" loading={profileLoading}>
+                  Save Changes
                 </Button>
               </div>
-              <Button type="submit" loading={profileLoading}>
-                Save Changes
-              </Button>
-            </div>
+            )}
           </form>
         </Card>
       </div>

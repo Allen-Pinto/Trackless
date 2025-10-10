@@ -17,9 +17,6 @@ api.interceptors.request.use(
     const token = localStorage.getItem('authToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-      console.log('Adding token to request:', token.substring(0, 20) + '...');
-    } else {
-      console.warn('No auth token found for request');
     }
     return config;
   },
@@ -36,11 +33,8 @@ api.interceptors.response.use(
     
     if (error.response?.status === 401) {
       console.log('401 Unauthorized - clearing auth data');
-      // Token expired or invalid - clear auth data
       localStorage.removeItem('authToken');
       localStorage.removeItem('user');
-      
-      // Dispatch a custom event to notify AuthContext
       window.dispatchEvent(new CustomEvent('auth-expired'));
     }
     return Promise.reject(error);
@@ -59,6 +53,7 @@ export interface User {
   _id: string;
   email: string;
   name: string;
+  avatar?: string; // Cloudinary URL
   isActive: boolean;
   maxSites: number;
   createdAt: string;
@@ -80,6 +75,7 @@ export interface Site {
   lastEventAt?: string;
 }
 
+// Analytics Interfaces
 export interface AnalyticsOverview {
   totalPageviews: number;
   totalVisitors: number;
@@ -116,6 +112,20 @@ export interface TrafficSource {
   source: string;
   percentage: number;
   visitors: number;
+}
+
+// Notification Interfaces
+export interface Notification {
+  _id: string;
+  userId: string;
+  type: 'traffic' | 'performance' | 'milestone' | 'system';
+  title: string;
+  message: string;
+  timestamp: string;
+  read: boolean;
+  siteId?: string;
+  siteName?: string;
+  metadata?: Record<string, any>;
 }
 
 // Utility function to validate token
@@ -159,6 +169,23 @@ export const authApi = {
     const response: AxiosResponse<ApiResponse<{ user: User }>> = await api.put('/auth/update-profile', {
       name,
     });
+    return response.data;
+  },
+
+  updateProfilePicture: async (avatarFile: File): Promise<ApiResponse<{ user: User }>> => {
+    const formData = new FormData();
+    formData.append('avatar', avatarFile);
+
+    const response: AxiosResponse<ApiResponse<{ user: User }>> = await api.put('/auth/update-profile-picture', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  removeProfilePicture: async (): Promise<ApiResponse<{ user: User }>> => {
+    const response: AxiosResponse<ApiResponse<{ user: User }>> = await api.delete('/auth/remove-profile-picture');
     return response.data;
   },
 
@@ -255,6 +282,45 @@ export const analyticsApi = {
     params.append('limit', limit.toString());
     
     const response: AxiosResponse<ApiResponse<TrafficSource[]>> = await api.get(`/analytics/referrers?siteId=${siteId}&${params.toString()}`);
+    return response.data;
+  },
+};
+
+// Notifications API
+export const notificationsApi = {
+  // Get all notifications for the user
+  getNotifications: async (): Promise<ApiResponse<{ notifications: Notification[] }>> => {
+    const response: AxiosResponse<ApiResponse<{ notifications: Notification[] }>> = await api.get('/notifications');
+    return response.data;
+  },
+
+  // Mark a notification as read
+  markAsRead: async (notificationId: string): Promise<ApiResponse> => {
+    const response: AxiosResponse<ApiResponse> = await api.post(`/notifications/${notificationId}/read`);
+    return response.data;
+  },
+
+  // Mark all notifications as read
+  markAllAsRead: async (): Promise<ApiResponse> => {
+    const response: AxiosResponse<ApiResponse> = await api.post('/notifications/read-all');
+    return response.data;
+  },
+
+  // Get unread count
+  getUnreadCount: async (): Promise<ApiResponse<{ count: number }>> => {
+    const response: AxiosResponse<ApiResponse<{ count: number }>> = await api.get('/notifications/unread-count');
+    return response.data;
+  },
+
+  // Delete a notification
+  deleteNotification: async (notificationId: string): Promise<ApiResponse> => {
+    const response: AxiosResponse<ApiResponse> = await api.delete(`/notifications/${notificationId}`);
+    return response.data;
+  },
+
+  // Clear all notifications
+  clearAll: async (): Promise<ApiResponse> => {
+    const response: AxiosResponse<ApiResponse> = await api.delete('/notifications/clear-all');
     return response.data;
   },
 };
