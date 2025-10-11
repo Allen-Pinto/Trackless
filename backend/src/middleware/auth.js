@@ -96,9 +96,7 @@ export const verifySiteOwnership = async (req, res, next) => {
   }
 };
 
-/**
- * Optional authentication - allows both authenticated and unauthenticated requests
- */
+
 export const optionalAuth = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
@@ -115,7 +113,8 @@ export const optionalAuth = async (req, res, next) => {
     
     next();
   } catch (error) {
-    // Continue without authentication
     next();
   }
 };
+
+export default authenticate;
