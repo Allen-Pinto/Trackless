@@ -4,11 +4,12 @@ import compression from 'compression';
 import morgan from 'morgan';
 import config from './config/env.js';
 import connectDatabase from './config/database.js';
-import corsMiddleware from './middleware/cors.js'; // Import your custom CORS
+import corsMiddleware from './middleware/cors.js';
 import trackRoutes from './routes/track.js';
 import analyticsRoutes from './routes/analytics.js';
 import authRoutes from './routes/auth.js';
 import sitesRoutes from './routes/sites.js';
+import notificationsRoutes from './routes/notifications.js'; // Add notifications routes
 
 // Initialize Express app
 const app = express();
@@ -50,6 +51,7 @@ app.get('/', (req, res) => {
       sites: '/api/sites',
       tracking: '/api/track',
       analytics: '/api/analytics',
+      notifications: '/api/notifications', // Add notifications endpoint
       health: '/api/health',
     },
     documentation: 'See API_DOCUMENTATION.md for complete API reference',
@@ -105,6 +107,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/sites', sitesRoutes);
 app.use('/api/track', trackRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/notifications', notificationsRoutes); // Add notifications routes
 
 // Test endpoint to verify CORS is working
 app.get('/api/test-cors', (req, res) => {
@@ -193,6 +196,7 @@ const startServer = async () => {
       console.log(`🌐 Sites: http://localhost:${config.port}/api/sites`);
       console.log(`📊 Track: http://localhost:${config.port}/api/track`);
       console.log(`📈 Analytics: http://localhost:${config.port}/api/analytics`);
+      console.log(`🔔 Notifications: http://localhost:${config.port}/api/notifications`); // Add this line
       console.log(`❤️ Health: http://localhost:${config.port}/api/health`);
       console.log(`🔄 CORS Test: http://localhost:${config.port}/api/test-cors`);
       console.log('=====================================');
@@ -217,19 +221,19 @@ process.on('unhandledRejection', (err) => {
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (err) => {
-  console.error('Uncaught Exception:', err);
-  console.log('Shutting down server gracefully...');
+  console.error('💥 Uncaught Exception:', err);
+  console.log('👋 Shutting down server gracefully...');
   process.exit(1);
 });
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
-  console.log('SIGTERM received - shutting down gracefully');
+  console.log('👋 SIGTERM received - shutting down gracefully');
   process.exit(0);
 });
 
 process.on('SIGINT', () => {
-  console.log('SIGINT received - shutting down gracefully');
+  console.log('👋 SIGINT received - shutting down gracefully');
   process.exit(0);
 });
 
