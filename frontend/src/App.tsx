@@ -1,24 +1,38 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { SignIn } from './pages/SignIn';
-import { SignUp } from './pages/SignUp';
+import LandingPage from './pages/LandingPage';
+import SignIn from './pages/SignIn';
+import SignUp from './pages/SignUp';
 import { ForgotPassword } from './pages/ForgotPassword';
-import { Dashboard } from './pages/Dashboard';
+import Dashboard from './pages/Dashboard';
 import { Sites } from './pages/Sites';
 import { Analytics } from './pages/Analytics';
 import { Settings } from './pages/Settings';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 import { AddSiteModal } from './components/modals/AddSiteModal';
+import OAuthCallback from './pages/OAuthCallback';
 
-type AuthPage = 'signin' | 'signup' | 'forgot';
+type AuthPage = 'landing' | 'signin' | 'signup' | 'forgot';
 type DashboardPage = 'dashboard' | 'sites' | 'analytics' | 'settings';
 
 const AppContent = () => {
   const { user, loading } = useAuth();
-  const [authPage, setAuthPage] = useState<AuthPage>('signin');
+  const [authPage, setAuthPage] = useState<AuthPage>('landing');
   const [currentPage, setCurrentPage] = useState<DashboardPage>('dashboard');
   const [isAddSiteModalOpen, setIsAddSiteModalOpen] = useState(false);
-  const [sitesRefreshKey, setSitesRefreshKey] = useState(0); // Add this state
+  const [sitesRefreshKey, setSitesRefreshKey] = useState(0);
+
+  const isOAuthCallback = window.location.pathname.includes('oauth');
+
+  useEffect(() => {
+    if (!user && !loading && !isOAuthCallback) {
+      setAuthPage('landing');
+    }
+  }, [user, loading, isOAuthCallback]);
+
+  if (isOAuthCallback) {
+    return <OAuthCallback />;
+  }
 
   if (loading) {
     return (
@@ -32,20 +46,36 @@ const AppContent = () => {
   }
 
   if (!user) {
-    if (authPage === 'signin') {
-      return (
-        <SignIn
-          onToggle={() => setAuthPage('signup')}
-          onForgotPassword={() => setAuthPage('forgot')}
-        />
-      );
+    switch (authPage) {
+      case 'landing':
+        return (
+          <LandingPage 
+            onNavigateToSignIn={() => setAuthPage('signin')}
+            onNavigateToSignUp={() => setAuthPage('signup')}
+          />
+        );
+      case 'signin':
+        return (
+          <SignIn 
+            onNavigateToSignUp={() => setAuthPage('signup')}
+            onNavigateToForgotPassword={() => setAuthPage('forgot')}
+            onBackToLanding={() => setAuthPage('landing')}
+            onSignInSuccess={() => {}}
+          />
+        );
+      case 'signup':
+        return (
+          <SignUp 
+            onToggle={() => setAuthPage('signin')}
+            onBackToLanding={() => setAuthPage('landing')}
+            onSignUpSuccess={() => {}}
+          />
+        );
+      case 'forgot':
+        return <ForgotPassword onBack={() => setAuthPage('signin')} />;
+      default:
+        return <div>Error: Invalid page</div>;
     }
-
-    if (authPage === 'signup') {
-      return <SignUp onToggle={() => setAuthPage('signin')} />;
-    }
-
-    return <ForgotPassword onBack={() => setAuthPage('signin')} />;
   }
 
   const getPageTitle = () => {
@@ -68,10 +98,12 @@ const AppContent = () => {
       case 'dashboard':
         return <Dashboard />;
       case 'sites':
-        return <Sites 
-          onAddSite={() => setIsAddSiteModalOpen(true)} 
-          refreshKey={sitesRefreshKey} // Pass refresh key to Sites component
-        />;
+        return (
+          <Sites
+            onAddSite={() => setIsAddSiteModalOpen(true)}
+            refreshKey={sitesRefreshKey}
+          />
+        );
       case 'analytics':
         return <Analytics />;
       case 'settings':
@@ -95,21 +127,19 @@ const AppContent = () => {
         isOpen={isAddSiteModalOpen}
         onClose={() => setIsAddSiteModalOpen(false)}
         onSiteAdded={() => {
-          // Instead of reloading, trigger a refresh of the sites data
           setSitesRefreshKey(prev => prev + 1);
           setIsAddSiteModalOpen(false);
+          setCurrentPage('sites');
         }}
       />
     </>
   );
 };
 
-function App() {
+export default function App() {
   return (
     <AuthProvider>
       <AppContent />
     </AuthProvider>
   );
 }
-
-export default App;

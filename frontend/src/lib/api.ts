@@ -1,7 +1,8 @@
+// lib/api.ts
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
 
 // API Configuration
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://trackless-fxoj.onrender.com/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://trackless-fxoj.onrender.com';
 
 // Create axios instance
 const api: AxiosInstance = axios.create({
@@ -144,7 +145,7 @@ export const validateToken = async (): Promise<boolean> => {
 // Auth API
 export const authApi = {
   signup: async (email: string, password: string, name: string): Promise<ApiResponse<{ user: User; token: string }>> => {
-    const response: AxiosResponse<ApiResponse<{ user: User; token: string }>> = await api.post('/auth/signup', {
+    const response: AxiosResponse<ApiResponse<{ user: User; token: string }>> = await api.post('/api/auth/signup', {
       email,
       password,
       name,
@@ -153,7 +154,7 @@ export const authApi = {
   },
 
   login: async (email: string, password: string): Promise<ApiResponse<{ user: User; token: string }>> => {
-    const response: AxiosResponse<ApiResponse<{ user: User; token: string }>> = await api.post('/auth/login', {
+    const response: AxiosResponse<ApiResponse<{ user: User; token: string }>> = await api.post('/api/auth/login', {
       email,
       password,
     });
@@ -161,12 +162,12 @@ export const authApi = {
   },
 
   getProfile: async (): Promise<ApiResponse<{ user: User }>> => {
-    const response: AxiosResponse<ApiResponse<{ user: User }>> = await api.get('/auth/me');
+    const response: AxiosResponse<ApiResponse<{ user: User }>> = await api.get('/api/auth/me');
     return response.data;
   },
 
   updateProfile: async (name: string): Promise<ApiResponse<{ user: User }>> => {
-    const response: AxiosResponse<ApiResponse<{ user: User }>> = await api.put('/auth/update-profile', {
+    const response: AxiosResponse<ApiResponse<{ user: User }>> = await api.put('/api/auth/update-profile', {
       name,
     });
     return response.data;
@@ -176,7 +177,7 @@ export const authApi = {
     const formData = new FormData();
     formData.append('avatar', avatarFile);
 
-    const response: AxiosResponse<ApiResponse<{ user: User }>> = await api.put('/auth/update-profile-picture', formData, {
+    const response: AxiosResponse<ApiResponse<{ user: User }>> = await api.put('/api/auth/update-profile-picture', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -185,12 +186,12 @@ export const authApi = {
   },
 
   removeProfilePicture: async (): Promise<ApiResponse<{ user: User }>> => {
-    const response: AxiosResponse<ApiResponse<{ user: User }>> = await api.delete('/auth/remove-profile-picture');
+    const response: AxiosResponse<ApiResponse<{ user: User }>> = await api.delete('/api/auth/remove-profile-picture');
     return response.data;
   },
 
   changePassword: async (currentPassword: string, newPassword: string): Promise<ApiResponse> => {
-    const response: AxiosResponse<ApiResponse> = await api.put('/auth/change-password', {
+    const response: AxiosResponse<ApiResponse> = await api.put('/api/auth/change-password', {
       currentPassword,
       newPassword,
     });
@@ -201,12 +202,12 @@ export const authApi = {
 // Sites API
 export const sitesApi = {
   getSites: async (): Promise<ApiResponse<{ sites: Site[]; total: number; maxSites: number }>> => {
-    const response: AxiosResponse<ApiResponse<{ sites: Site[]; total: number; maxSites: number }>> = await api.get('/sites');
+    const response: AxiosResponse<ApiResponse<{ sites: Site[]; total: number; maxSites: number }>> = await api.get('/api/sites');
     return response.data;
   },
 
   createSite: async (name: string, domain: string, description?: string): Promise<ApiResponse<{ site: Site }>> => {
-    const response: AxiosResponse<ApiResponse<{ site: Site }>> = await api.post('/sites', {
+    const response: AxiosResponse<ApiResponse<{ site: Site }>> = await api.post('/api/sites', {
       name,
       domain,
       description,
@@ -215,22 +216,22 @@ export const sitesApi = {
   },
 
   getSite: async (siteId: string): Promise<ApiResponse<{ site: Site }>> => {
-    const response: AxiosResponse<ApiResponse<{ site: Site }>> = await api.get(`/sites/${siteId}`);
+    const response: AxiosResponse<ApiResponse<{ site: Site }>> = await api.get(`/api/sites/${siteId}`);
     return response.data;
   },
 
   updateSite: async (siteId: string, updates: Partial<Pick<Site, 'name' | 'description' | 'isPublic'>>): Promise<ApiResponse<{ site: Site }>> => {
-    const response: AxiosResponse<ApiResponse<{ site: Site }>> = await api.put(`/sites/${siteId}`, updates);
+    const response: AxiosResponse<ApiResponse<{ site: Site }>> = await api.put(`/api/sites/${siteId}`, updates);
     return response.data;
   },
 
   deleteSite: async (siteId: string): Promise<ApiResponse> => {
-    const response: AxiosResponse<ApiResponse> = await api.delete(`/sites/${siteId}`);
+    const response: AxiosResponse<ApiResponse> = await api.delete(`/api/sites/${siteId}`);
     return response.data;
   },
 
   getTrackingSnippet: async (siteId: string): Promise<ApiResponse<{ siteId: string; snippet: string; instructions: string }>> => {
-    const response: AxiosResponse<ApiResponse<{ siteId: string; snippet: string; instructions: string }>> = await api.get(`/sites/${siteId}/snippet`);
+    const response: AxiosResponse<ApiResponse<{ siteId: string; snippet: string; instructions: string }>> = await api.get(`/api/sites/${siteId}/snippet`);
     return response.data;
   },
 };
@@ -242,7 +243,7 @@ export const analyticsApi = {
     if (startDate) params.append('startDate', startDate);
     if (endDate) params.append('endDate', endDate);
     
-    const response: AxiosResponse<ApiResponse<AnalyticsOverview>> = await api.get(`/analytics/overview?siteId=${siteId}&${params.toString()}`);
+    const response: AxiosResponse<ApiResponse<AnalyticsOverview>> = await api.get(`/api/analytics/overview?siteId=${siteId}&${params.toString()}`);
     return response.data;
   },
 
@@ -252,7 +253,7 @@ export const analyticsApi = {
     if (endDate) params.append('endDate', endDate);
     params.append('interval', interval);
     
-    const response: AxiosResponse<ApiResponse<PageviewData[]>> = await api.get(`/analytics/pageviews?siteId=${siteId}&${params.toString()}`);
+    const response: AxiosResponse<ApiResponse<PageviewData[]>> = await api.get(`/api/analytics/pageviews?siteId=${siteId}&${params.toString()}`);
     return response.data;
   },
 
@@ -262,7 +263,7 @@ export const analyticsApi = {
     if (endDate) params.append('endDate', endDate);
     params.append('limit', limit.toString());
     
-    const response: AxiosResponse<ApiResponse<TopPage[]>> = await api.get(`/analytics/pages?siteId=${siteId}&${params.toString()}`);
+    const response: AxiosResponse<ApiResponse<TopPage[]>> = await api.get(`/api/analytics/pages?siteId=${siteId}&${params.toString()}`);
     return response.data;
   },
 
@@ -271,7 +272,7 @@ export const analyticsApi = {
     if (startDate) params.append('startDate', startDate);
     if (endDate) params.append('endDate', endDate);
     
-    const response: AxiosResponse<ApiResponse<DeviceStats>> = await api.get(`/analytics/devices?siteId=${siteId}&${params.toString()}`);
+    const response: AxiosResponse<ApiResponse<DeviceStats>> = await api.get(`/api/analytics/devices?siteId=${siteId}&${params.toString()}`);
     return response.data;
   },
 
@@ -281,46 +282,40 @@ export const analyticsApi = {
     if (endDate) params.append('endDate', endDate);
     params.append('limit', limit.toString());
     
-    const response: AxiosResponse<ApiResponse<TrafficSource[]>> = await api.get(`/analytics/referrers?siteId=${siteId}&${params.toString()}`);
+    const response: AxiosResponse<ApiResponse<TrafficSource[]>> = await api.get(`/api/analytics/referrers?siteId=${siteId}&${params.toString()}`);
     return response.data;
   },
 };
 
 // Notifications API
 export const notificationsApi = {
-  // Get all notifications for the user
   getNotifications: async (): Promise<ApiResponse<{ notifications: Notification[] }>> => {
-    const response: AxiosResponse<ApiResponse<{ notifications: Notification[] }>> = await api.get('/notifications');
+    const response: AxiosResponse<ApiResponse<{ notifications: Notification[] }>> = await api.get('/api/notifications');
     return response.data;
   },
 
-  // Mark a notification as read
   markAsRead: async (notificationId: string): Promise<ApiResponse> => {
-    const response: AxiosResponse<ApiResponse> = await api.post(`/notifications/${notificationId}/read`);
+    const response: AxiosResponse<ApiResponse> = await api.post(`/api/notifications/${notificationId}/read`);
     return response.data;
   },
 
-  // Mark all notifications as read
   markAllAsRead: async (): Promise<ApiResponse> => {
-    const response: AxiosResponse<ApiResponse> = await api.post('/notifications/read-all');
+    const response: AxiosResponse<ApiResponse> = await api.post('/api/notifications/read-all');
     return response.data;
   },
 
-  // Get unread count
   getUnreadCount: async (): Promise<ApiResponse<{ count: number }>> => {
-    const response: AxiosResponse<ApiResponse<{ count: number }>> = await api.get('/notifications/unread-count');
+    const response: AxiosResponse<ApiResponse<{ count: number }>> = await api.get('/api/notifications/unread-count');
     return response.data;
   },
 
-  // Delete a notification
   deleteNotification: async (notificationId: string): Promise<ApiResponse> => {
-    const response: AxiosResponse<ApiResponse> = await api.delete(`/notifications/${notificationId}`);
+    const response: AxiosResponse<ApiResponse> = await api.delete(`/api/notifications/${notificationId}`);
     return response.data;
   },
 
-  // Clear all notifications
   clearAll: async (): Promise<ApiResponse> => {
-    const response: AxiosResponse<ApiResponse> = await api.delete('/notifications/clear-all');
+    const response: AxiosResponse<ApiResponse> = await api.delete('/api/notifications/clear-all');
     return response.data;
   },
 };

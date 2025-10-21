@@ -31,7 +31,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // ✅ Update state + localStorage
   const updateUser = (userData: User | null) => {
     setUser(userData);
     if (userData) {
@@ -43,6 +42,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   useEffect(() => {
     const checkAuth = async () => {
+      // First check if we have OAuth tokens in URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlToken = urlParams.get('token');
+      const urlUser = urlParams.get('user');
+
+      if (urlToken && urlUser) {
+        console.log('🔄 Found OAuth tokens in URL, storing...');
+        localStorage.setItem('authToken', urlToken);
+        localStorage.setItem('user', urlUser);
+        window.history.replaceState({}, '', '/');
+      }
+
       const token = localStorage.getItem('authToken');
       const storedUser = localStorage.getItem('user');
 
@@ -51,47 +62,42 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       if (token && storedUser) {
         try {
-          console.log('🔄 Fetching fresh user data from API...');
+          // Parse user data from localStorage first (immediate)
+          const userData = JSON.parse(storedUser);
+          console.log('✅ Setting user from localStorage:', userData);
+          setUser(userData);
+          
+          // Then try to verify with API
+          console.log('🔄 Verifying with API...');
           const response = await authApi.getProfile();
-
+          
           if (response.success && response.data) {
-            console.log('User loaded from API:', response.data.user);
+            console.log('✅ API verification successful');
             updateUser(response.data.user);
           } else {
-            console.log('API response not successful');
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('user');
-            setUser(null);
+            console.log('⚠️ API verification failed, but using stored user');
+            // Keep using stored user
           }
         } catch (error) {
-          console.log('API call failed:', error);
+          console.error('❌ Error parsing user data:', error);
           localStorage.removeItem('authToken');
           localStorage.removeItem('user');
           setUser(null);
         }
       } else {
-        console.log('No token or stored user found');
+        console.log('❌ No authentication data found');
         setUser(null);
       }
 
       setLoading(false);
     };
 
-    const handleAuthExpired = () => {
-      console.log('Auth expired event received - clearing user');
-      updateUser(null);
-      localStorage.removeItem('authToken');
-    };
-
     checkAuth();
-    window.addEventListener('auth-expired', handleAuthExpired);
-    return () => window.removeEventListener('auth-expired', handleAuthExpired);
   }, []);
 
-  // ✅ FIXED: signIn now uses authApi.login and stores token + user
   const signIn = async (email: string, password: string) => {
     try {
-      const response = await authApi.login(email, password); // corrected from signIn → login
+      const response = await authApi.login(email, password);
 
       if (response.success && response.data) {
         const { token, user } = response.data;
@@ -195,5 +201,5 @@ export function AuthProvider({ children }: AuthProviderProps) {
     clearAuth,
   };
 
-  return <AuthContext.Provider value={value}>{!loading && children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
