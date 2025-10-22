@@ -11,5 +11,14 @@ export default defineConfig({
         changeOrigin: true,
       }
     }
+  },
+  build: {
+    outDir: 'dist',
+    // Ensure proper handling of client-side routes
+    rollupOptions: {
+      input: {
+        main: './index.html'
+      }
+    }
   }
 })
