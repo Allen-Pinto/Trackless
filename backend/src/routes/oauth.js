@@ -1,6 +1,7 @@
 import express from 'express';
 import passport from '../config/passport.js';
 import { generateToken } from '../utils/jwt.js';
+import User from '../models/User.js';
 
 const router = express.Router();
 
@@ -28,8 +29,9 @@ router.get('/google/callback',
       // Generate JWT token
       const token = generateToken(req.user._id);
       
-      // Redirect to frontend with token
-      res.redirect(`${process.env.FRONTEND_URL}/oauth-success?token=${token}&user=${encodeURIComponent(JSON.stringify(req.user.toPublicJSON()))}`);
+      // Redirect to frontend success page with token and user data
+      const userData = encodeURIComponent(JSON.stringify(req.user.toPublicJSON()));
+      res.redirect(`${process.env.FRONTEND_URL}/oauth-success?token=${token}&user=${userData}`);
     } catch (error) {
       console.error('OAuth callback error:', error);
       res.redirect(`${process.env.FRONTEND_URL}/login?error=oauth_failed`);
@@ -123,6 +125,31 @@ router.get('/providers', async (req, res) => {
       error: 'Failed to get providers'
     });
   }
+});
+
+/**
+ * @route   GET /api/oauth/debug
+ * @desc    Debug OAuth configuration
+ * @access  Public
+ */
+router.get('/debug', (req, res) => {
+  res.json({
+    success: true,
+    message: 'OAuth router is working!',
+    environment: {
+      googleClientId: !!process.env.GOOGLE_CLIENT_ID,
+      googleClientSecret: !!process.env.GOOGLE_CLIENT_SECRET,
+      googleRedirectUri: process.env.GOOGLE_REDIRECT_URI,
+      frontendUrl: process.env.FRONTEND_URL
+    },
+    routes: [
+      'GET /api/oauth/google',
+      'GET /api/oauth/google/callback',
+      'POST /api/oauth/link-account',
+      'GET /api/oauth/providers',
+      'GET /api/oauth/debug'
+    ]
+  });
 });
 
 export default router;

@@ -1,44 +1,46 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
 
 const OAuthSuccess = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { setUser, setToken } = useAuth();
   const [error, setError] = useState('');
 
   useEffect(() => {
     const token = searchParams.get('token');
     const userParam = searchParams.get('user');
 
+    console.log('🔄 OAuthSuccess - Processing callback...');
+
     if (token && userParam) {
       try {
-        const user = JSON.parse(decodeURIComponent(userParam));
+        console.log('✅ OAuth tokens found in URL, waiting for AuthContext to process...');
         
-        // Store token and user in context
-        setToken(token);
-        setUser(user);
-        
-        // Store in localStorage
-        localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(user));
-        
-        // Redirect to dashboard after 2 seconds
         setTimeout(() => {
-          navigate('/dashboard');
-        }, 2000);
+          const storedToken = localStorage.getItem('authToken');
+          const storedUser = localStorage.getItem('user');
+          
+          if (storedToken && storedUser) {
+            console.log('✅ OAuth login successful, redirecting to dashboard');
+            navigate('/dashboard');
+          } else {
+            console.log('❌ OAuth login failed - no data stored');
+            setError('Authentication failed');
+            setTimeout(() => navigate('/'), 3000);
+          }
+        }, 1000);
         
       } catch (error) {
-        console.error('OAuth success error:', error);
+        console.error('❌ OAuth success error:', error);
         setError('Failed to process OAuth login');
-        setTimeout(() => navigate('/login'), 3000);
+        setTimeout(() => navigate('/'), 3000);
       }
     } else {
+      console.log('❌ No token or user found in URL');
       setError('Invalid OAuth response');
-      setTimeout(() => navigate('/login'), 3000);
+      setTimeout(() => navigate('/'), 3000);
     }
-  }, [searchParams, navigate, setUser, setToken]);
+  }, [searchParams, navigate]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -52,7 +54,7 @@ const OAuthSuccess = () => {
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">OAuth Failed</h2>
             <p className="text-gray-600 mb-4">{error}</p>
-            <p className="text-sm text-gray-500">Redirecting to login...</p>
+            <p className="text-sm text-gray-500">Redirecting to home...</p>
           </>
         ) : (
           <>
@@ -63,7 +65,7 @@ const OAuthSuccess = () => {
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome!</h2>
             <p className="text-gray-600 mb-4">Successfully logged in with Google</p>
-            <p className="text-sm text-gray-500">Redirecting to dashboard...</p>
+            <p className="text-sm text-gray-500">Completing authentication...</p>
           </>
         )}
       </div>

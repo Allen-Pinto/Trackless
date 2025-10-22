@@ -11,6 +11,7 @@ import { Settings } from './pages/Settings';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 import { AddSiteModal } from './components/modals/AddSiteModal';
 import OAuthCallback from './pages/OAuthCallback';
+import OAuthSuccess from './pages/OAuthSuccess';
 
 type AuthPage = 'landing' | 'signin' | 'signup' | 'forgot';
 type DashboardPage = 'dashboard' | 'sites' | 'analytics' | 'settings';
@@ -22,16 +23,25 @@ const AppContent = () => {
   const [isAddSiteModalOpen, setIsAddSiteModalOpen] = useState(false);
   const [sitesRefreshKey, setSitesRefreshKey] = useState(0);
 
-  const isOAuthCallback = window.location.pathname.includes('oauth');
+  // Check current path for OAuth routes
+  const currentPath = window.location.pathname;
+  const isOAuthCallback = currentPath === '/oauth-callback';
+  const isOAuthSuccess = currentPath === '/oauth-success';
 
   useEffect(() => {
-    if (!user && !loading && !isOAuthCallback) {
+    if (!user && !loading && !isOAuthCallback && !isOAuthSuccess) {
       setAuthPage('landing');
     }
-  }, [user, loading, isOAuthCallback]);
+  }, [user, loading, isOAuthCallback, isOAuthSuccess]);
 
+  // Handle OAuth callback route
   if (isOAuthCallback) {
     return <OAuthCallback />;
+  }
+
+  // Handle OAuth success route
+  if (isOAuthSuccess) {
+    return <OAuthSuccess />;
   }
 
   if (loading) {
@@ -60,7 +70,9 @@ const AppContent = () => {
             onNavigateToSignUp={() => setAuthPage('signup')}
             onNavigateToForgotPassword={() => setAuthPage('forgot')}
             onBackToLanding={() => setAuthPage('landing')}
-            onSignInSuccess={() => {}}
+            onSignInSuccess={() => {
+              // This will be handled by the auth context
+            }}
           />
         );
       case 'signup':
@@ -68,7 +80,9 @@ const AppContent = () => {
           <SignUp 
             onToggle={() => setAuthPage('signin')}
             onBackToLanding={() => setAuthPage('landing')}
-            onSignUpSuccess={() => {}}
+            onSignUpSuccess={() => {
+              // This will be handled by the auth context
+            }}
           />
         );
       case 'forgot':
