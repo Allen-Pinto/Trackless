@@ -1,24 +1,12 @@
 {
-  "routes": [
+  "rewrites": [
     {
-      "src": "/oauth-success",
-      "dest": "/index.html"
+      "source": "/oauth-success",
+      "destination": "/index.html"
     },
     {
-      "src": "/dashboard",
-      "dest": "/index.html"
-    },
-    {
-      "src": "/login",
-      "dest": "/index.html"
-    },
-    {
-      "src": "/signup", 
-      "dest": "/index.html"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
