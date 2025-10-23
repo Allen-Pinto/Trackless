@@ -1,7 +1,7 @@
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
+import { Strategy as GitHubStrategy } from 'passport-github2';
 import User from '../models/User.js';
-import { generateToken } from '../utils/jwt.js';
 
 // Serialize user for session
 passport.serializeUser((user, done) => {
@@ -26,36 +26,47 @@ passport.use(new GoogleStrategy({
   scope: ['profile', 'email']
 }, async (accessToken, refreshToken, profile, done) => {
   try {
-    // Check if user already exists with this Google ID
-    let user = await User.findOne({ 
-      $or: [
-        { googleId: profile.id },
-        { email: profile.emails[0].value }
-      ]
-    });
-
-    if (user) {
-      // Update existing user with Google ID if not already set
-      if (!user.googleId) {
-        user.googleId = profile.id;
-        await user.save();
-      }
-      return done(null, user);
-    }
-
-    // Create new user
-    user = await User.create({
-      googleId: profile.id,
-      name: profile.displayName,
-      email: profile.emails[0].value,
-      avatar: profile.photos[0]?.value,
-      isVerified: true, // Google emails are verified
-      password: 'oauth-user-' + profile.id // Dummy password for OAuth users
-    });
-
+    // Use the static method from User model
+    const user = await User.findOrCreateFromOAuth('google', profile);
     return done(null, user);
   } catch (error) {
     console.error('Google OAuth error:', error);
+    return done(error, null);
+  }
+}));
+
+// GitHub OAuth Strategy
+passport.use(new GitHubStrategy({
+  clientID: process.env.GITHUB_CLIENT_ID,
+  clientSecret: process.env.GITHUB_CLIENT_SECRET,
+  callbackURL: process.env.GITHUB_REDIRECT_URI,
+  scope: ['user:email']
+}, async (accessToken, refreshToken, profile, done) => {
+  try {
+    console.log('GitHub Profile:', profile);
+    
+    // GitHub profile handling
+    let email = profile.emails && profile.emails[0] ? profile.emails[0].value : null;
+    
+    // If no email from GitHub, create a placeholder
+    if (!email) {
+      email = `${profile.username}@users.noreply.github.com`;
+    }
+
+    // Create a normalized profile object similar to Google's
+    const normalizedProfile = {
+      id: profile.id,
+      displayName: profile.displayName || profile.username,
+      emails: [{ value: email }],
+      photos: profile.photos ? [{ value: profile.photos[0].value }] : [],
+      username: profile.username
+    };
+
+    // Use the static method from User model
+    const user = await User.findOrCreateFromOAuth('github', normalizedProfile);
+    return done(null, user);
+  } catch (error) {
+    console.error('GitHub OAuth error:', error);
     return done(error, null);
   }
 }));

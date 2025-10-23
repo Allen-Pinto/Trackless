@@ -36,18 +36,18 @@ app.use(corsMiddleware);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Trust proxy for production
+// Trust proxy for production (important for Vercel)
 app.set('trust proxy', 1);
 
 // Session middleware (for OAuth)
 app.use(session({
-  secret: process.env.API_SECRET || 'fallback-secret',
+  secret: config.security.jwtSecret,
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env.NODE_ENV === 'production',
+    secure: config.nodeEnv === 'production',
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+    sameSite: config.nodeEnv === 'production' ? 'none' : 'lax'
   },
   store: config.nodeEnv === 'production' 
     ? // In production, you might want to use Redis or MongoDB session store
@@ -120,6 +120,11 @@ app.get('/api/health/detailed', corsMiddleware, (req, res) => {
     oauth: {
       google: !!process.env.GOOGLE_CLIENT_ID,
       github: !!process.env.GITHUB_CLIENT_ID
+    },
+    urls: {
+      frontend: process.env.FRONTEND_URL,
+      googleCallback: process.env.GOOGLE_REDIRECT_URI,
+      githubCallback: process.env.GITHUB_REDIRECT_URI
     }
   };
 
@@ -156,7 +161,10 @@ app.get('/api/oauth-test', (req, res) => {
     endpoints: {
       google: '/api/oauth/google',
       google_callback: '/api/oauth/google/callback',
-      providers: '/api/oauth/providers'
+      github: '/api/oauth/github',
+      github_callback: '/api/oauth/github/callback',
+      providers: '/api/oauth/providers',
+      debug: '/api/oauth/debug'
     },
     environment: config.nodeEnv,
   });
@@ -236,10 +244,19 @@ const startServer = async () => {
     console.log(`CORS Allowed Origins: ${config.cors.allowedOrigins.join(', ')}`);
     
     // Check OAuth configuration
+    console.log('🔐 OAuth Configuration:');
     if (process.env.GOOGLE_CLIENT_ID) {
       console.log(`✅ Google OAuth: Configured`);
+      console.log(`   Callback: ${process.env.GOOGLE_REDIRECT_URI}`);
     } else {
       console.log(`⚠️  Google OAuth: Not configured (set GOOGLE_CLIENT_ID)`);
+    }
+    
+    if (process.env.GITHUB_CLIENT_ID) {
+      console.log(`✅ GitHub OAuth: Configured`);
+      console.log(`   Callback: ${process.env.GITHUB_REDIRECT_URI}`);
+    } else {
+      console.log(`⚠️  GitHub OAuth: Not configured (set GITHUB_CLIENT_ID)`);
     }
     
     await connectDatabase();
@@ -249,24 +266,30 @@ const startServer = async () => {
       console.log('=====================================');
       console.log(`📍 Server running on port ${config.port}`);
       console.log(`🌍 Environment: ${config.nodeEnv}`);
-      console.log(`🔐 Auth: http://localhost:${config.port}/api/auth`);
-      console.log(`🔐 OAuth: http://localhost:${config.port}/api/oauth`);
-      console.log(`🌐 Sites: http://localhost:${config.port}/api/sites`);
-      console.log(`📊 Track: http://localhost:${config.port}/api/track`);
-      console.log(`📈 Analytics: http://localhost:${config.port}/api/analytics`);
-      console.log(`🔔 Notifications: http://localhost:${config.port}/api/notifications`);
-      console.log(`❤️ Health: http://localhost:${config.port}/api/health`);
-      console.log(`🔄 CORS Test: http://localhost:${config.port}/api/test-cors`);
-      console.log(`🔐 OAuth Test: http://localhost:${config.port}/api/oauth-test`);
+      console.log(`🔐 Auth: /api/auth`);
+      console.log(`🔐 OAuth: /api/oauth`);
+      console.log(`🌐 Sites: /api/sites`);
+      console.log(`📊 Track: /api/track`);
+      console.log(`📈 Analytics: /api/analytics`);
+      console.log(`🔔 Notifications: /api/notifications`);
+      console.log(`❤️ Health: /api/health`);
+      console.log(`🔄 CORS Test: /api/test-cors`);
+      console.log(`🔐 OAuth Test: /api/oauth-test`);
       console.log('=====================================');
       console.log('🎯 OAuth Endpoints:');
-      console.log(`   • Google Login: http://localhost:${config.port}/api/oauth/google`);
-      console.log(`   • Google Callback: http://localhost:${config.port}/api/oauth/google/callback`);
+      console.log(`   • Google Login: /api/oauth/google`);
+      console.log(`   • Google Callback: /api/oauth/google/callback`);
+      console.log(`   • GitHub Login: /api/oauth/github`);
+      console.log(`   • GitHub Callback: /api/oauth/github/callback`);
       console.log('=====================================');
       console.log('🎯 Ready to accept requests from:');
       config.cors.allowedOrigins.forEach(origin => {
         console.log(`   • ${origin}`);
       });
+      console.log('=====================================');
+      console.log('🌐 Production URLs:');
+      console.log(`   • Frontend: ${process.env.FRONTEND_URL}`);
+      console.log(`   • Backend: Running on port ${config.port}`);
       console.log('=====================================');
     });
   } catch (error) {
