@@ -52,7 +52,7 @@ const Dashboard = () => {
   const [error, setError] = useState('');
   const { user } = useAuth();
 
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+  const API_URL = import.meta.env.VITE_API_URL || 'https://trackless-fxoj.onrender.com';
 
   useEffect(() => {
     fetchDashboardData();
@@ -61,7 +61,7 @@ const Dashboard = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('authToken'); // FIXED: Changed from 'token' to 'authToken'
       
       if (!token) {
         throw new Error('No authentication token found');

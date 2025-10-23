@@ -23,12 +23,16 @@ interface OAuthUser {
 const OAuthSuccess = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { setAuthData } = useAuth(); // Use setAuthData from context
+  const { setAuthData } = useAuth();
   const [status, setStatus] = useState('processing');
   const [countdown, setCountdown] = useState(3);
   const [providerName, setProviderName] = useState('Social');
+  const [hasProcessed, setHasProcessed] = useState(false);
 
   useEffect(() => {
+    // Prevent double processing
+    if (hasProcessed) return;
+
     const processOAuth = async () => {
       console.log('🔄 OAuthSuccess - Starting...');
       console.log('📊 URL Params:', {
@@ -60,17 +64,29 @@ const OAuthSuccess = () => {
         console.log('🔐 Setting auth data via AuthContext');
         setAuthData(token, userData);
         
+        // ALSO store as 'token' for backward compatibility with Dashboard
+        localStorage.setItem('token', token);
+        
+        // Mark as processed
+        setHasProcessed(true);
+        
         // Clear URL parameters to prevent reprocessing
         window.history.replaceState({}, '', '/oauth-success');
         
         console.log('✅ Authentication complete');
+        console.log('📊 Storage check:', {
+          authToken: localStorage.getItem('authToken') ? '✅' : '❌',
+          token: localStorage.getItem('token') ? '✅' : '❌',
+          user: localStorage.getItem('user') ? '✅' : '❌'
+        });
+        
         setStatus('success');
         
-        // Wait a bit before redirect for better UX
+        // Wait for better UX
         await new Promise(resolve => setTimeout(resolve, 1500));
         
         console.log('🚀 Redirecting to dashboard');
-        navigate('/dashboard', { replace: true });
+        window.location.href = '/dashboard';
         
       } catch (error) {
         console.error('❌ Error processing OAuth data:', error);
@@ -79,7 +95,7 @@ const OAuthSuccess = () => {
     };
 
     processOAuth();
-  }, [searchParams, navigate, setAuthData]);
+  }, [searchParams, setAuthData, hasProcessed]);
 
   useEffect(() => {
     if (status === 'error' || status === 'missing_data') {
