@@ -3,7 +3,9 @@ import { User, authApi } from '../lib/api';
 
 interface AuthContextType {
   user: User | null;
+  token: string | null;
   loading: boolean;
+  isAuthenticated: boolean;
   signUp: (email: string, password: string, name: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -11,6 +13,7 @@ interface AuthContextType {
   updateProfilePicture: (avatarFile: File) => Promise<{ error: Error | null }>;
   removeProfilePicture: () => Promise<{ error: Error | null }>;
   clearAuth: () => void;
+  setAuthData: (token: string, userData: User) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -29,70 +32,80 @@ interface AuthProviderProps {
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
+  const [token, setTokenState] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  const updateUser = (userData: User | null) => {
-    setUser(userData);
-    if (userData) {
-      localStorage.setItem('user', JSON.stringify(userData));
+  // Helper function to update all auth state
+  const updateAuthState = (newToken: string | null, newUser: User | null) => {
+    setTokenState(newToken);
+    setUser(newUser);
+    setIsAuthenticated(!!newToken && !!newUser);
+    
+    if (newToken && newUser) {
+      localStorage.setItem('authToken', newToken);
+      localStorage.setItem('user', JSON.stringify(newUser));
     } else {
+      localStorage.removeItem('authToken');
       localStorage.removeItem('user');
     }
   };
 
+  // Function to set auth data from OAuth
+  const setAuthData = (newToken: string, userData: User) => {
+    console.log('🔐 Setting auth data from OAuth:', { newToken, userData });
+    updateAuthState(newToken, userData);
+  };
+
   useEffect(() => {
-    const checkAuth = async () => {
-      // First check if we have OAuth tokens in URL
-      const urlParams = new URLSearchParams(window.location.search);
-      const urlToken = urlParams.get('token');
-      const urlUser = urlParams.get('user');
-
-      if (urlToken && urlUser) {
-        console.log('🔄 Found OAuth tokens in URL, storing...');
-        localStorage.setItem('authToken', urlToken);
-        localStorage.setItem('user', urlUser);
-        window.history.replaceState({}, '', '/');
-      }
-
-      const token = localStorage.getItem('authToken');
+    const initializeAuth = async () => {
+      console.log('🔄 AuthProvider - Initializing authentication...');
+      
+      const storedToken = localStorage.getItem('authToken');
       const storedUser = localStorage.getItem('user');
 
-      console.log('🔍 Auth Check - Token exists:', !!token);
-      console.log('🔍 Auth Check - Stored user exists:', !!storedUser);
+      console.log('📊 Stored data:', {
+        token: storedToken ? '✅ Present' : '❌ Missing',
+        user: storedUser ? '✅ Present' : '❌ Missing'
+      });
 
-      if (token && storedUser) {
+      if (storedToken && storedUser) {
         try {
-          // Parse user data from localStorage first (immediate)
+          // Parse user data immediately for fast UI
           const userData = JSON.parse(storedUser);
           console.log('✅ Setting user from localStorage:', userData);
-          setUser(userData);
+          updateAuthState(storedToken, userData);
           
-          // Then try to verify with API
-          console.log('🔄 Verifying with API...');
-          const response = await authApi.getProfile();
-          
-          if (response.success && response.data) {
-            console.log('✅ API verification successful');
-            updateUser(response.data.user);
-          } else {
-            console.log('⚠️ API verification failed, but using stored user');
-            // Keep using stored user
+          // Verify token with backend in background
+          try {
+            console.log('🔄 Verifying token with API...');
+            const response = await authApi.getProfile();
+            
+            if (response.success && response.data) {
+              console.log('✅ Token verified, updating user data');
+              updateAuthState(storedToken, response.data.user);
+            } else {
+              console.log('⚠️ Token verification failed, using stored user');
+              // Keep using stored user data
+            }
+          } catch (apiError) {
+            console.error('❌ API verification error, using stored data:', apiError);
+            // Continue with stored data
           }
+          
         } catch (error) {
-          console.error('❌ Error parsing user data:', error);
-          localStorage.removeItem('authToken');
-          localStorage.removeItem('user');
-          setUser(null);
+          console.error('❌ Error parsing stored auth data:', error);
+          updateAuthState(null, null);
         }
       } else {
-        console.log('❌ No authentication data found');
-        setUser(null);
+        console.log('❌ No stored authentication data found');
+        updateAuthState(null, null);
       }
 
       setLoading(false);
     };
 
-    checkAuth();
+    initializeAuth();
   }, []);
 
   const signIn = async (email: string, password: string) => {
@@ -100,14 +113,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const response = await authApi.login(email, password);
 
       if (response.success && response.data) {
-        const { token, user } = response.data;
-
-        if (token) localStorage.setItem('authToken', token);
-        if (user) {
-          localStorage.setItem('user', JSON.stringify(user));
-          setUser(user);
-        }
-
+        const { token: newToken, user: userData } = response.data;
+        updateAuthState(newToken, userData);
         console.log('✅ Logged in successfully');
         return { error: null };
       } else {
@@ -124,14 +131,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const response = await authApi.signup(email, password, name);
 
       if (response.success && response.data) {
-        const { token, user } = response.data;
-
-        if (token) localStorage.setItem('authToken', token);
-        if (user) {
-          localStorage.setItem('user', JSON.stringify(user));
-          setUser(user);
-        }
-
+        const { token: newToken, user: userData } = response.data;
+        updateAuthState(newToken, userData);
         console.log('✅ Account created successfully');
         return { error: null };
       } else {
@@ -144,21 +145,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
 
   const signOut = async () => {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('user');
-    setUser(null);
-    console.log('🚪 Signed out');
+    try {
+      // Only call logout endpoint if it exists
+      if ('logout' in authApi && typeof authApi.logout === 'function') {
+        await (authApi as any).logout();
+      }
+    } catch (error) {
+      console.error('Logout API error:', error);
+    } finally {
+      updateAuthState(null, null);
+      console.log('🚪 Signed out');
+    }
   };
 
   const clearAuth = () => {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('user');
-    setUser(null);
+    updateAuthState(null, null);
   };
 
   const value: AuthContextType = {
     user,
+    token,
     loading,
+    isAuthenticated,
     signUp,
     signIn,
     signOut,
@@ -166,7 +174,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       try {
         const response = await authApi.updateProfile(name);
         if (response.success && response.data) {
-          updateUser(response.data.user);
+          updateAuthState(token, response.data.user);
           return { error: null };
         }
         throw new Error(response.error || 'Update failed');
@@ -178,7 +186,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       try {
         const response = await authApi.updateProfilePicture(avatarFile);
         if (response.success && response.data) {
-          updateUser(response.data.user);
+          updateAuthState(token, response.data.user);
           return { error: null };
         }
         throw new Error(response.error || 'Update failed');
@@ -190,7 +198,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       try {
         const response = await authApi.removeProfilePicture();
         if (response.success && response.data) {
-          updateUser(response.data.user);
+          updateAuthState(token, response.data.user);
           return { error: null };
         }
         throw new Error(response.error || 'Remove failed');
@@ -199,6 +207,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
     },
     clearAuth,
+    setAuthData,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
