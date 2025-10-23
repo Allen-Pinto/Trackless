@@ -23,52 +23,63 @@ interface OAuthUser {
 const OAuthSuccess = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { setAuthData } = useAuth(); // Use setAuthData from context
   const [status, setStatus] = useState('processing');
   const [countdown, setCountdown] = useState(3);
+  const [providerName, setProviderName] = useState('Social');
 
   useEffect(() => {
-    console.log('🔄 OAuthSuccess - Starting...');
-    console.log('📊 URL Params:', {
-      token: searchParams.get('token') ? '✅ Present' : '❌ Missing',
-      user: searchParams.get('user') ? '✅ Present' : '❌ Missing'
-    });
+    const processOAuth = async () => {
+      console.log('🔄 OAuthSuccess - Starting...');
+      console.log('📊 URL Params:', {
+        token: searchParams.get('token') ? '✅ Present' : '❌ Missing',
+        user: searchParams.get('user') ? '✅ Present' : '❌ Missing'
+      });
 
-    const token = searchParams.get('token');
-    const userParam = searchParams.get('user');
+      const token = searchParams.get('token');
+      const userParam = searchParams.get('user');
 
-    if (token && userParam) {
+      if (!token || !userParam) {
+        console.log('❌ Missing OAuth data in URL');
+        setStatus('missing_data');
+        return;
+      }
+
       try {
         console.log('✅ OAuth data found in URL');
         
-        // Parse user data to check provider
+        // Parse user data
         const userData: OAuthUser = JSON.parse(decodeURIComponent(userParam));
         console.log('👤 User data:', userData);
         
-        // Store directly in localStorage
-        localStorage.setItem('authToken', token);
-        localStorage.setItem('user', JSON.stringify(userData));
+        // Set provider name for display
+        if (userData.authProvider === 'google') setProviderName('Google');
+        else if (userData.authProvider === 'github') setProviderName('GitHub');
+        
+        // Use AuthContext's setAuthData method - this handles everything
+        console.log('🔐 Setting auth data via AuthContext');
+        setAuthData(token, userData);
         
         // Clear URL parameters to prevent reprocessing
         window.history.replaceState({}, '', '/oauth-success');
         
-        console.log('✅ OAuth data stored in localStorage');
+        console.log('✅ Authentication complete');
         setStatus('success');
         
-        // Redirect immediately - AuthContext will pick up from localStorage
-        setTimeout(() => {
-          navigate('/dashboard', { replace: true });
-        }, 1500);
+        // Wait a bit before redirect for better UX
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        console.log('🚀 Redirecting to dashboard');
+        navigate('/dashboard', { replace: true });
         
       } catch (error) {
-        console.error('❌ Error storing OAuth data:', error);
+        console.error('❌ Error processing OAuth data:', error);
         setStatus('error');
       }
-    } else {
-      console.log('❌ Missing OAuth data in URL');
-      setStatus('missing_data');
-    }
-  }, [searchParams, navigate]);
+    };
+
+    processOAuth();
+  }, [searchParams, navigate, setAuthData]);
 
   useEffect(() => {
     if (status === 'error' || status === 'missing_data') {
@@ -86,27 +97,6 @@ const OAuthSuccess = () => {
       return () => clearInterval(timer);
     }
   }, [status, navigate]);
-
-  const getProviderName = () => {
-    // Check user from AuthContext first
-    const currentUser = user as OAuthUser;
-    if (currentUser?.authProvider === 'google') return 'Google';
-    if (currentUser?.authProvider === 'github') return 'GitHub';
-    
-    // Fallback to checking URL params
-    try {
-      const userParam = searchParams.get('user');
-      if (userParam) {
-        const userData: OAuthUser = JSON.parse(decodeURIComponent(userParam));
-        if (userData.authProvider === 'google') return 'Google';
-        if (userData.authProvider === 'github') return 'GitHub';
-      }
-    } catch (error) {
-      console.error('Error parsing user param:', error);
-    }
-    
-    return 'Social';
-  };
 
   if (status === 'processing') {
     return (
@@ -134,7 +124,7 @@ const OAuthSuccess = () => {
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome!</h2>
           <p className="text-gray-600 mb-4">
-            Successfully logged in with {getProviderName()}
+            Successfully logged in with {providerName}
           </p>
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto mb-4"></div>
           <p className="text-sm text-gray-500">Redirecting to your dashboard...</p>
