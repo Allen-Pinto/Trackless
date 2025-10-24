@@ -27,21 +27,19 @@ const OAuthSuccess = () => {
   const [status, setStatus] = useState('processing');
   const [countdown, setCountdown] = useState(3);
   const [providerName, setProviderName] = useState('Social');
-  const [hasProcessed, setHasProcessed] = useState(false);
 
   useEffect(() => {
-    // Prevent double processing
-    if (hasProcessed) return;
-
     const processOAuth = async () => {
       console.log('🔄 OAuthSuccess - Starting...');
-      console.log('📊 URL Params:', {
-        token: searchParams.get('token') ? '✅ Present' : '❌ Missing',
-        user: searchParams.get('user') ? '✅ Present' : '❌ Missing'
-      });
-
+      
       const token = searchParams.get('token');
       const userParam = searchParams.get('user');
+
+      console.log('📊 URL Params:', {
+        token: token ? '✅ Present' : '❌ Missing',
+        user: userParam ? '✅ Present' : '❌ Missing',
+        fullURL: window.location.href
+      });
 
       if (!token || !userParam) {
         console.log('❌ Missing OAuth data in URL');
@@ -60,18 +58,12 @@ const OAuthSuccess = () => {
         if (userData.authProvider === 'google') setProviderName('Google');
         else if (userData.authProvider === 'github') setProviderName('GitHub');
         
-        // Use AuthContext's setAuthData method - this handles everything
+        // Use AuthContext's setAuthData method
         console.log('🔐 Setting auth data via AuthContext');
         setAuthData(token, userData);
         
-        // ALSO store as 'token' for backward compatibility with Dashboard
+        // ALSO store as 'token' for backward compatibility
         localStorage.setItem('token', token);
-        
-        // Mark as processed
-        setHasProcessed(true);
-        
-        // Clear URL parameters to prevent reprocessing
-        window.history.replaceState({}, '', '/oauth-success');
         
         console.log('✅ Authentication complete');
         console.log('📊 Storage check:', {
@@ -82,11 +74,11 @@ const OAuthSuccess = () => {
         
         setStatus('success');
         
-        // Wait for better UX
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        console.log('🚀 Redirecting to dashboard');
-        window.location.href = '/dashboard';
+        // Short delay for better UX, then redirect
+        setTimeout(() => {
+          console.log('🚀 Redirecting to dashboard');
+          navigate('/dashboard', { replace: true });
+        }, 1500);
         
       } catch (error) {
         console.error('❌ Error processing OAuth data:', error);
@@ -95,7 +87,7 @@ const OAuthSuccess = () => {
     };
 
     processOAuth();
-  }, [searchParams, setAuthData, hasProcessed]);
+  }, [searchParams, setAuthData, navigate]);
 
   useEffect(() => {
     if (status === 'error' || status === 'missing_data') {
@@ -164,9 +156,15 @@ const OAuthSuccess = () => {
             : 'We encountered an error. Please try again.'
           }
         </p>
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-gray-500 mb-4">
           Redirecting to login in {countdown} seconds...
         </p>
+        <button
+          onClick={() => navigate('/login', { replace: true })}
+          className="px-6 py-2 bg-[#FDC726] text-gray-900 rounded-lg font-semibold hover:bg-[#e5b520] transition-colors"
+        >
+          Go to Login
+        </button>
       </div>
     </div>
   );

@@ -45,19 +45,16 @@ const SignIn = ({ onNavigateToSignUp, onNavigateToForgotPassword, onBackToLandin
     }
   };
 
-const handleGoogleLogin = () => {
-  const url = `https://trackless-fxoj.onrender.com/api/oauth/google`;
-  console.log('🔐 Final OAuth URL:', url);
-  
-  // Test if this exact URL works
-  window.open(url, '_blank'); // Open in new tab to see what happens
-};
+  // FIXED: Use window.location.href instead of window.open
+  const handleGoogleLogin = () => {
+    console.log('🔐 Redirecting to Google OAuth...');
+    window.location.href = `${API_URL}/api/oauth/google`;
+  };
 
-const handleGitHubLogin = () => {
-  const url = `https://trackless-fxoj.onrender.com/api/oauth/github`;
-  console.log('🔐 Final OAuth URL:', url);
-  window.open(url, '_blank');
-};
+  const handleGitHubLogin = () => {
+    console.log('🔐 Redirecting to GitHub OAuth...');
+    window.location.href = `${API_URL}/api/oauth/github`;
+  };
 
   return (
     <div className="min-h-screen bg-white font-sans flex">
@@ -189,6 +186,7 @@ const handleGitHubLogin = () => {
           <div className="grid grid-cols-2 gap-4">
             <button 
               onClick={handleGoogleLogin}
+              type="button"
               className="flex items-center justify-center gap-3 py-3 px-4 bg-white border-2 border-gray-200 rounded-xl hover:border-gray-300 transition-colors hover:shadow-md"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -202,6 +200,7 @@ const handleGitHubLogin = () => {
 
             <button 
               onClick={handleGitHubLogin}
+              type="button"
               className="flex items-center justify-center gap-3 py-3 px-4 bg-white border-2 border-gray-200 rounded-xl hover:border-gray-300 transition-colors hover:shadow-md"
             >
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
