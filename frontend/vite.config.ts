@@ -7,14 +7,15 @@ export default defineConfig({
     port: 3000, 
     proxy: {
       '/api': {
-        target: 'http://localhost:5001', 
+        target: 'https://trackless-fxoj.onrender.com', 
         changeOrigin: true,
+        secure: false, // Add this for HTTPS backend
+        rewrite: (path) => path // Optional: ensures path isn't modified
       }
     }
   },
   build: {
     outDir: 'dist',
-    // Ensure proper handling of client-side routes
     rollupOptions: {
       input: {
         main: './index.html'

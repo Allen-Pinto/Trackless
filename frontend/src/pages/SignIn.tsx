@@ -37,7 +37,6 @@ const SignIn = ({ onNavigateToSignUp, onNavigateToForgotPassword, onBackToLandin
         setError(result.error.message || 'Failed to sign in');
       } else {
         console.log('✅ Sign in successful');
-        // The AuthContext will automatically update and redirect to dashboard
       }
     } catch (err: any) {
       setError(err.message || 'Failed to sign in');
@@ -47,11 +46,11 @@ const SignIn = ({ onNavigateToSignUp, onNavigateToForgotPassword, onBackToLandin
   };
 
   const handleGoogleLogin = () => {
-    window.location.href = `${API_URL}/api/oauth/google`;
+    window.location.href = `https://trackless-fxoj.onrender.com/api/oauth/google`;
   };
 
   const handleGitHubLogin = () => {
-    window.location.href = `${API_URL}/api/oauth/github`;
+    window.location.href = `https://trackless-fxoj.onrender.com/api/oauth/github`;
   };
 
   return (
