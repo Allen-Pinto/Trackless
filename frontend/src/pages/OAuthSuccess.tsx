@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -27,8 +27,16 @@ const OAuthSuccess = () => {
   const [status, setStatus] = useState('processing');
   const [countdown, setCountdown] = useState(3);
   const [providerName, setProviderName] = useState('Social');
+  
+  // Use ref to ensure we only process once
+  const hasProcessed = useRef(false);
 
   useEffect(() => {
+    // Prevent multiple executions
+    if (hasProcessed.current) {
+      return;
+    }
+
     const processOAuth = async () => {
       console.log('🔄 OAuthSuccess - Starting...');
       
@@ -44,10 +52,14 @@ const OAuthSuccess = () => {
       if (!token || !userParam) {
         console.log('❌ Missing OAuth data in URL');
         setStatus('missing_data');
+        hasProcessed.current = true;
         return;
       }
 
       try {
+        // Mark as processed immediately to prevent re-runs
+        hasProcessed.current = true;
+        
         console.log('✅ OAuth data found in URL');
         
         // Parse user data
@@ -74,20 +86,22 @@ const OAuthSuccess = () => {
         
         setStatus('success');
         
-        // Short delay for better UX, then redirect
+        // Wait a moment, then redirect WITHOUT query params
         setTimeout(() => {
-          console.log('🚀 Redirecting to dashboard');
+          console.log('🚀 Redirecting to dashboard (clean URL)');
+          // Navigate with replace to prevent back button issues
           navigate('/dashboard', { replace: true });
         }, 1500);
         
       } catch (error) {
         console.error('❌ Error processing OAuth data:', error);
         setStatus('error');
+        hasProcessed.current = true;
       }
     };
 
     processOAuth();
-  }, [searchParams, setAuthData, navigate]);
+  }, []); // Empty dependency array - only run once!
 
   useEffect(() => {
     if (status === 'error' || status === 'missing_data') {
@@ -95,7 +109,7 @@ const OAuthSuccess = () => {
         setCountdown(prev => {
           if (prev <= 1) {
             clearInterval(timer);
-            navigate('/login', { replace: true });
+            navigate('/signin', { replace: true });
             return 0;
           }
           return prev - 1;
@@ -160,7 +174,7 @@ const OAuthSuccess = () => {
           Redirecting to login in {countdown} seconds...
         </p>
         <button
-          onClick={() => navigate('/login', { replace: true })}
+          onClick={() => navigate('/signin', { replace: true })}
           className="px-6 py-2 bg-[#FDC726] text-gray-900 rounded-lg font-semibold hover:bg-[#e5b520] transition-colors"
         >
           Go to Login
