@@ -290,9 +290,8 @@ const Dashboard = () => {
           </p>
           <button 
             onClick={() => {
-              // This should navigate to the sites page in your app
-              // For now, it reloads which should trigger the DashboardLayout
-              window.location.reload();
+              // Navigate to sites page and trigger modal
+              window.dispatchEvent(new CustomEvent('navigate-to-sites'));
             }}
             className="px-8 py-3 bg-[#FDC726] text-gray-900 rounded-xl font-semibold hover:bg-[#e5b520] transition-colors shadow-sm"
           >
