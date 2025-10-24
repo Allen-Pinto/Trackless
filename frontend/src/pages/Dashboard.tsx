@@ -53,13 +53,44 @@ const Dashboard = () => {
       setLoading(true);
       setError('');
       
-      // Try multiple possible token keys
+      // Check for token
       const token = localStorage.getItem('authToken') || 
                     localStorage.getItem('token') || 
                     localStorage.getItem('trackless_token');
       
+      console.log('Token found:', !!token); // Debug log
+      console.log('Token length:', token?.length); // Debug log
+      
       if (!token) {
         throw new Error('No authentication token found. Please sign in again.');
+      }
+
+      // Check if user has any sites first
+      console.log('Checking user sites...'); // Debug log
+      const sitesResponse = await fetch(`${API_URL}/api/sites`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log('Sites response status:', sitesResponse.status); // Debug log
+
+      if (!sitesResponse.ok) {
+        const errorText = await sitesResponse.text();
+        console.error('Sites error:', errorText);
+        throw new Error(`Failed to fetch sites: ${sitesResponse.status}`);
+      }
+
+      const sitesData = await sitesResponse.json();
+      console.log('Sites data:', sitesData); // Debug log
+
+      if (!sitesData.success || !sitesData.data || sitesData.data.length === 0) {
+        // No sites yet - show empty state instead of error
+        console.log('No sites found - showing empty state');
+        setDashboardData(null); // Set to null to trigger empty state
+        setLoading(false);
+        return;
       }
 
       console.log('Fetching dashboard data...'); // Debug log
@@ -96,15 +127,25 @@ const Dashboard = () => {
       });
 
       console.log('Response status:', response.status); // Debug log
+      console.log('Response headers:', response.headers); // Debug log
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        const errorText = await response.text();
+        console.error('Error response text:', errorText); // Debug log
+        
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { message: errorText };
+        }
+        
         console.error('Error response:', errorData); // Debug log
-        throw new Error(errorData.message || `Server error: ${response.status}`);
+        throw new Error(errorData.message || errorData.error || `Server error: ${response.status} - ${errorText}`);
       }
 
       const data = await response.json();
-      console.log('Dashboard data:', data); // Debug log
+      console.log('Dashboard data received:', data); // Debug log
       
       if (data.success) {
         setDashboardData(data.data);
@@ -204,9 +245,21 @@ const Dashboard = () => {
 
   if (!dashboardData) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-600">No data available</p>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+        <div className="text-center max-w-md">
+          <div className="w-20 h-20 bg-gradient-to-br from-[#FDC726] to-[#e5b520] rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <Eye className="w-10 h-10 text-white" />
+          </div>
+          <h3 className="text-2xl font-bold text-gray-900 mb-3">Welcome to Trackless!</h3>
+          <p className="text-gray-600 mb-6">
+            You haven't added any sites yet. Add your first site to start tracking analytics.
+          </p>
+          <button 
+            onClick={() => window.location.href = '/dashboard'} // Navigate to sites page
+            className="px-8 py-3 bg-[#FDC726] text-gray-900 rounded-xl font-semibold hover:bg-[#e5b520] transition-colors shadow-sm"
+          >
+            Add Your First Site
+          </button>
         </div>
       </div>
     );
