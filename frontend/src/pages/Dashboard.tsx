@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, Users, MousePointer, Clock, TrendingUp, TrendingDown, BarChart3, Calendar, Download, Filter } from 'lucide-react';
+import { Eye, Users, MousePointer, Clock, TrendingUp, TrendingDown } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface DashboardData {
@@ -32,16 +32,6 @@ interface DashboardData {
       pageviews: number;
       uniqueVisitors: number;
     }>;
-    browsers: Array<{
-      browser: string;
-      pageviews: number;
-      uniqueVisitors: number;
-    }>;
-    countries: Array<{
-      country: string;
-      pageviews: number;
-      uniqueVisitors: number;
-    }>;
   };
 }
 
@@ -61,11 +51,18 @@ const Dashboard = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('authToken'); // FIXED: Changed from 'token' to 'authToken'
+      setError('');
+      
+      // Try multiple possible token keys
+      const token = localStorage.getItem('authToken') || 
+                    localStorage.getItem('token') || 
+                    localStorage.getItem('trackless_token');
       
       if (!token) {
-        throw new Error('No authentication token found');
+        throw new Error('No authentication token found. Please sign in again.');
       }
+
+      console.log('Fetching dashboard data...'); // Debug log
 
       // Calculate date range
       const endDate = new Date();
@@ -88,26 +85,31 @@ const Dashboard = () => {
           startDate.setDate(startDate.getDate() - 7);
       }
 
-      const response = await fetch(
-        `${API_URL}/api/analytics/dashboard?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
+      const url = `${API_URL}/api/analytics/dashboard?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`;
+      console.log('Request URL:', url); // Debug log
+
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
-      );
+      });
+
+      console.log('Response status:', response.status); // Debug log
 
       if (!response.ok) {
-        throw new Error('Failed to fetch dashboard data');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Error response:', errorData); // Debug log
+        throw new Error(errorData.message || `Server error: ${response.status}`);
       }
 
       const data = await response.json();
+      console.log('Dashboard data:', data); // Debug log
       
       if (data.success) {
         setDashboardData(data.data);
       } else {
-        throw new Error(data.error || 'Failed to load dashboard');
+        throw new Error(data.error || 'Failed to load dashboard data');
       }
     } catch (err) {
       console.error('Dashboard error:', err);
@@ -117,20 +119,18 @@ const Dashboard = () => {
     }
   };
 
-  // Format duration from seconds to minutes:seconds
   const formatDuration = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
+    const remainingSeconds = Math.floor(seconds % 60);
     return `${minutes}m ${remainingSeconds}s`;
   };
 
-  // Mock data fallback while loading or if no data
   const stats = dashboardData ? [
     {
       title: 'Total Pageviews',
       value: dashboardData.overview.pageviews.toLocaleString(),
-      change: '+12.5%', // You'll need to calculate this from previous period
-      changeType: 'positive',
+      change: '+12.5%',
+      changeType: 'positive' as const,
       icon: Eye,
       color: 'from-blue-500 to-blue-600'
     },
@@ -138,7 +138,7 @@ const Dashboard = () => {
       title: 'Unique Visitors',
       value: dashboardData.overview.uniqueVisitors.toLocaleString(),
       change: '+8.2%',
-      changeType: 'positive',
+      changeType: 'positive' as const,
       icon: Users,
       color: 'from-purple-500 to-purple-600'
     },
@@ -146,7 +146,7 @@ const Dashboard = () => {
       title: 'Avg. Session Duration',
       value: formatDuration(dashboardData.overview.avgDuration),
       change: '-2.1%',
-      changeType: 'negative',
+      changeType: 'negative' as const,
       icon: Clock,
       color: 'from-green-500 to-green-600'
     },
@@ -154,7 +154,7 @@ const Dashboard = () => {
       title: 'Bounce Rate',
       value: `${dashboardData.overview.bounceRate}%`,
       change: '-5.4%',
-      changeType: 'positive',
+      changeType: 'positive' as const,
       icon: MousePointer,
       color: 'from-orange-500 to-orange-600'
     }
@@ -173,25 +173,46 @@ const Dashboard = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+        <div className="text-center max-w-md">
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <TrendingDown className="w-8 h-8 text-red-500" />
           </div>
           <h3 className="text-xl font-bold text-gray-900 mb-2">Failed to load dashboard</h3>
-          <p className="text-gray-600 mb-4">{error}</p>
-          <button 
-            onClick={fetchDashboardData}
-            className="px-6 py-2 bg-[#FDC726] text-gray-900 rounded-lg font-semibold hover:bg-[#e5b520] transition-colors"
-          >
-            Try Again
-          </button>
+          <p className="text-gray-600 mb-6">{error}</p>
+          <div className="space-y-3">
+            <button 
+              onClick={fetchDashboardData}
+              className="w-full px-6 py-2 bg-[#FDC726] text-gray-900 rounded-lg font-semibold hover:bg-[#e5b520] transition-colors"
+            >
+              Try Again
+            </button>
+            <button 
+              onClick={() => {
+                localStorage.clear();
+                window.location.href = '/signin';
+              }}
+              className="w-full px-6 py-2 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
+            >
+              Sign In Again
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
-  const maxValue = dashboardData ? Math.max(...dashboardData.charts.pageviewsOverTime.map(d => d.pageviews)) : 0;
+  if (!dashboardData) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600">No data available</p>
+        </div>
+      </div>
+    );
+  }
+
+  const maxValue = Math.max(...dashboardData.charts.pageviewsOverTime.map(d => d.pageviews), 1);
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
@@ -215,15 +236,6 @@ const Dashboard = () => {
                 <option value="30d">Last 30 days</option>
                 <option value="90d">Last 90 days</option>
               </select>
-              
-              <button className="p-2.5 bg-white border-2 border-gray-200 rounded-xl text-gray-700 hover:border-gray-300 transition-colors">
-                <Filter className="w-5 h-5" />
-              </button>
-              
-              <button className="px-4 py-2.5 bg-[#FDC726] text-gray-900 rounded-xl font-semibold hover:bg-[#e5b520] transition-all shadow-sm flex items-center gap-2">
-                <Download className="w-5 h-5" />
-                Export
-              </button>
             </div>
           </div>
         </div>
@@ -270,36 +282,34 @@ const Dashboard = () => {
               </div>
             </div>
             
-            {dashboardData && (
-              <div className="h-64 flex items-end gap-3">
-                {dashboardData.charts.pageviewsOverTime.map((item, index) => (
-                  <div key={index} className="flex-1 flex flex-col gap-2">
-                    <div className="relative flex-1 flex flex-col justify-end gap-1">
-                      <div 
-                        className="bg-gradient-to-t from-[#FDC726] to-[#e5b520] rounded-t-lg hover:opacity-80 transition-opacity cursor-pointer"
-                        style={{ height: `${maxValue > 0 ? (item.pageviews / maxValue) * 100 : 0}%` }}
-                        title={`Views: ${item.pageviews}`}
-                      />
-                      <div 
-                        className="bg-gray-300 rounded-t-lg hover:opacity-80 transition-opacity cursor-pointer"
-                        style={{ height: `${maxValue > 0 ? (item.uniqueVisitors / maxValue) * 100 : 0}%` }}
-                        title={`Visitors: ${item.uniqueVisitors}`}
-                      />
-                    </div>
-                    <span className="text-xs text-gray-500 text-center font-medium">
-                      {new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    </span>
+            <div className="h-64 flex items-end gap-3">
+              {dashboardData.charts.pageviewsOverTime.map((item, index) => (
+                <div key={index} className="flex-1 flex flex-col gap-2">
+                  <div className="relative flex-1 flex flex-col justify-end gap-1">
+                    <div 
+                      className="bg-gradient-to-t from-[#FDC726] to-[#e5b520] rounded-t-lg hover:opacity-80 transition-opacity cursor-pointer"
+                      style={{ height: `${(item.pageviews / maxValue) * 100}%` }}
+                      title={`Views: ${item.pageviews}`}
+                    />
+                    <div 
+                      className="bg-gray-300 rounded-t-lg hover:opacity-80 transition-opacity cursor-pointer"
+                      style={{ height: `${(item.uniqueVisitors / maxValue) * 100}%` }}
+                      title={`Visitors: ${item.uniqueVisitors}`}
+                    />
                   </div>
-                ))}
-              </div>
-            )}
+                  <span className="text-xs text-gray-500 text-center font-medium">
+                    {new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Traffic Sources */}
           <div className="bg-white rounded-2xl p-6 border border-gray-200">
             <h3 className="text-xl font-bold text-gray-900 mb-6">Top Referrers</h3>
             <div className="space-y-5">
-              {dashboardData?.charts.referrers.slice(0, 4).map((source, index) => (
+              {dashboardData.charts.referrers.slice(0, 4).map((source, index) => (
                 <div key={index}>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-semibold text-gray-900 truncate">
@@ -327,57 +337,55 @@ const Dashboard = () => {
           {/* Top Pages */}
           <div className="lg:col-span-2 bg-white rounded-2xl p-6 border border-gray-200">
             <h3 className="text-xl font-bold text-gray-900 mb-6">Top Pages</h3>
-            {dashboardData && (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-200">
-                      <th className="text-left py-3 px-2 text-sm font-semibold text-gray-700">Page</th>
-                      <th className="text-right py-3 px-2 text-sm font-semibold text-gray-700">Views</th>
-                      <th className="text-right py-3 px-2 text-sm font-semibold text-gray-700">Visitors</th>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-3 px-2 text-sm font-semibold text-gray-700">Page</th>
+                    <th className="text-right py-3 px-2 text-sm font-semibold text-gray-700">Views</th>
+                    <th className="text-right py-3 px-2 text-sm font-semibold text-gray-700">Visitors</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dashboardData.charts.topPages.map((page, index) => (
+                    <tr key={index} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                      <td className="py-4 px-2">
+                        <span className="text-sm font-medium text-gray-900">{page.page}</span>
+                      </td>
+                      <td className="py-4 px-2 text-right">
+                        <span className="text-sm text-gray-700">{page.views.toLocaleString()}</span>
+                      </td>
+                      <td className="py-4 px-2 text-right">
+                        <span className="text-sm text-gray-700">{page.uniqueVisitors.toLocaleString()}</span>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {dashboardData.charts.topPages.map((page, index) => (
-                      <tr key={index} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                        <td className="py-4 px-2">
-                          <span className="text-sm font-medium text-gray-900">{page.page}</span>
-                        </td>
-                        <td className="py-4 px-2 text-right">
-                          <span className="text-sm text-gray-700">{page.views.toLocaleString()}</span>
-                        </td>
-                        <td className="py-4 px-2 text-right">
-                          <span className="text-sm text-gray-700">{page.uniqueVisitors.toLocaleString()}</span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           {/* Devices */}
           <div className="bg-white rounded-2xl p-6 border border-gray-200">
             <h3 className="text-xl font-bold text-gray-900 mb-6">Devices</h3>
             <div className="space-y-6">
-              {dashboardData?.charts.devices.map((device, index) => (
+              {dashboardData.charts.devices.map((device, index) => (
                 <div key={index}>
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-sm font-semibold text-gray-900 capitalize">{device.device}</span>
                     <span className="text-sm text-gray-600">
-                      {device.pageviews > 0 ? Math.round((device.pageviews / dashboardData.overview.pageviews) * 100) : 0}%
+                      {dashboardData.overview.pageviews > 0 ? Math.round((device.pageviews / dashboardData.overview.pageviews) * 100) : 0}%
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-10 flex items-center px-1">
                     <div 
                       className="bg-[#FDC726] h-8 rounded-full transition-all duration-500 flex items-center justify-center"
                       style={{ 
-                        width: `${device.pageviews > 0 ? (device.pageviews / dashboardData.overview.pageviews) * 100 : 0}%` 
+                        width: `${dashboardData.overview.pageviews > 0 ? (device.pageviews / dashboardData.overview.pageviews) * 100 : 0}%` 
                       }}
                     >
                       <span className="text-white text-xs font-semibold">
-                        {device.pageviews > 0 ? Math.round((device.pageviews / dashboardData.overview.pageviews) * 100) : 0}%
+                        {dashboardData.overview.pageviews > 0 ? Math.round((device.pageviews / dashboardData.overview.pageviews) * 100) : 0}%
                       </span>
                     </div>
                   </div>
@@ -394,7 +402,7 @@ const Dashboard = () => {
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-gray-900">
-                    {dashboardData?.overview.activeSessions || 0} visitors online
+                    {dashboardData.overview.activeSessions || 0} visitors online
                   </p>
                   <p className="text-xs text-gray-500">Updated just now</p>
                 </div>
