@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import LandingPage from './pages/LandingPage';
 import SignIn from './pages/SignIn';
@@ -10,7 +11,6 @@ import { Analytics } from './pages/Analytics';
 import { Settings } from './pages/Settings';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 import OAuthSuccess from './pages/OAuthSuccess';
-import { useState } from 'react';
 import { AddSiteModal } from './components/modals/AddSiteModal';
 
 type DashboardPage = 'dashboard' | 'sites' | 'analytics' | 'settings';
@@ -66,6 +66,17 @@ const DashboardWrapper = () => {
   const [isAddSiteModalOpen, setIsAddSiteModalOpen] = useState(false);
   const [sitesRefreshKey, setSitesRefreshKey] = useState(0);
 
+  // Listen for navigation events from Dashboard (when "Add Your First Site" is clicked)
+  useEffect(() => {
+    const handleNavigateToSites = () => {
+      setCurrentPage('sites');
+      setIsAddSiteModalOpen(true);
+    };
+
+    window.addEventListener('navigate-to-sites', handleNavigateToSites);
+    return () => window.removeEventListener('navigate-to-sites', handleNavigateToSites);
+  }, []);
+
   const getPageTitle = () => {
     switch (currentPage) {
       case 'dashboard':
@@ -117,7 +128,7 @@ const DashboardWrapper = () => {
         onSiteAdded={() => {
           setSitesRefreshKey(prev => prev + 1);
           setIsAddSiteModalOpen(false);
-          setCurrentPage('sites');
+          // Stay on sites page after adding
         }}
       />
     </>
