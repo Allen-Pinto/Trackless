@@ -70,13 +70,19 @@ const SignUp = ({ onToggle, onBackToLanding }: SignUpProps) => {
     }
   };
 
-  const handleGoogleLogin = () => {
-    window.location.href = `${API_URL}/api/oauth/google`;
-  };
+const handleGoogleLogin = () => {
+  const url = `https://trackless-fxoj.onrender.com/api/oauth/google`;
+  console.log('🔐 Final OAuth URL:', url);
+  
+  // Test if this exact URL works
+  window.open(url, '_blank'); // Open in new tab to see what happens
+};
 
-  const handleGitHubLogin = () => {
-    window.location.href = `${API_URL}/api/oauth/github`;
-  };
+const handleGitHubLogin = () => {
+  const url = `https://trackless-fxoj.onrender.com/api/oauth/github`;
+  console.log('🔐 Final OAuth URL:', url);
+  window.open(url, '_blank');
+};
 
   return (
     <div className="min-h-screen bg-white font-sans flex">
