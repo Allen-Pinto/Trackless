@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Eye, Users, MousePointer, Clock, TrendingUp, TrendingDown } from 'lucide-react';
+import { Eye, Users, MousePointer, Clock, TrendingUp, TrendingDown, Globe } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface DashboardData {
@@ -35,67 +35,97 @@ interface DashboardData {
   };
 }
 
+interface Site {
+  _id: string;
+  name: string;
+  domain: string;
+}
+
 const Dashboard = () => {
   const [dateRange, setDateRange] = useState('7d');
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
-  const [sites, setSites] = useState<any[]>([]);
+  const [sites, setSites] = useState<Site[]>([]);
   const { user } = useAuth();
 
   const API_URL = import.meta.env.VITE_API_URL || 'https://trackless-fxoj.onrender.com';
 
+  // Fetch sites on mount
   useEffect(() => {
-    fetchDashboardData();
-  }, [dateRange]);
+    fetchSites();
+  }, []);
 
-  const fetchDashboardData = async () => {
+  // Fetch dashboard data when site or date range changes
+  useEffect(() => {
+    if (selectedSiteId) {
+      fetchDashboardData();
+    }
+  }, [dateRange, selectedSiteId]);
+
+  const fetchSites = async () => {
     try {
-      setLoading(true);
-      setError('');
-      
-      // Check for token
       const token = localStorage.getItem('authToken') || 
-                    localStorage.getItem('token') || 
-                    localStorage.getItem('trackless_token');
-      
-      console.log('Token found:', !!token); // Debug log
-      console.log('Token length:', token?.length); // Debug log
+                    localStorage.getItem('token');
       
       if (!token) {
-        throw new Error('No authentication token found. Please sign in again.');
+        setError('No authentication token found');
+        setLoading(false);
+        return;
       }
 
-      // Check if user has any sites first
-      console.log('Checking user sites...'); // Debug log
-      const sitesResponse = await fetch(`${API_URL}/api/sites`, {
+      console.log('Fetching sites...');
+
+      const response = await fetch(`${API_URL}/api/sites`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
 
-      console.log('Sites response status:', sitesResponse.status); // Debug log
+      console.log('Sites response status:', response.status);
 
-      if (!sitesResponse.ok) {
-        const errorText = await sitesResponse.text();
-        console.error('Sites error:', errorText);
-        throw new Error(`Failed to fetch sites: ${sitesResponse.status}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch sites');
       }
 
-      const sitesData = await sitesResponse.json();
-      console.log('Sites data:', sitesData); // Debug log
-
-      if (!sitesData.success || !sitesData.data || sitesData.data.length === 0) {
-        // No sites yet - show empty state instead of error
-        console.log('No sites found - showing empty state');
-        setDashboardData(null); // Set to null to trigger empty state
+      const data = await response.json();
+      console.log('Sites data:', data);
+      
+      if (data.success && data.data && data.data.length > 0) {
+        setSites(data.data);
+        setSelectedSiteId(data.data[0]._id); // Auto-select first site
+        console.log('Selected site:', data.data[0]._id);
+      } else {
+        // No sites - show empty state
         setLoading(false);
-        return;
+      }
+    } catch (err) {
+      console.error('Error fetching sites:', err);
+      setError('Failed to load sites');
+      setLoading(false);
+    }
+  };
+
+  const fetchDashboardData = async () => {
+    if (!selectedSiteId) {
+      console.log('No site selected, skipping fetch');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError('');
+      
+      const token = localStorage.getItem('authToken') || 
+                    localStorage.getItem('token');
+      
+      if (!token) {
+        throw new Error('No authentication token found');
       }
 
-      console.log('Fetching dashboard data...'); // Debug log
+      console.log('Fetching dashboard data for site:', selectedSiteId);
 
       // Calculate date range
       const endDate = new Date();
@@ -118,8 +148,8 @@ const Dashboard = () => {
           startDate.setDate(startDate.getDate() - 7);
       }
 
-      const url = `${API_URL}/api/analytics/dashboard?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`;
-      console.log('Request URL:', url); // Debug log
+      const url = `${API_URL}/api/analytics/dashboard?siteId=${selectedSiteId}&startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`;
+      console.log('Dashboard URL:', url);
 
       const response = await fetch(url, {
         headers: {
@@ -128,12 +158,11 @@ const Dashboard = () => {
         }
       });
 
-      console.log('Response status:', response.status); // Debug log
-      console.log('Response headers:', response.headers); // Debug log
+      console.log('Dashboard response status:', response.status);
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Error response text:', errorText); // Debug log
+        console.error('Dashboard error response:', errorText);
         
         let errorData;
         try {
@@ -142,17 +171,16 @@ const Dashboard = () => {
           errorData = { message: errorText };
         }
         
-        console.error('Error response:', errorData); // Debug log
-        throw new Error(errorData.message || errorData.error || `Server error: ${response.status} - ${errorText}`);
+        throw new Error(errorData.message || errorData.error || `Server error: ${response.status}`);
       }
 
       const data = await response.json();
-      console.log('Dashboard data received:', data); // Debug log
+      console.log('Dashboard data:', data);
       
       if (data.success) {
         setDashboardData(data.data);
       } else {
-        throw new Error(data.error || 'Failed to load dashboard data');
+        throw new Error(data.error || 'Failed to load dashboard');
       }
     } catch (err) {
       console.error('Dashboard error:', err);
@@ -222,10 +250,13 @@ const Dashboard = () => {
             <TrendingDown className="w-8 h-8 text-red-500" />
           </div>
           <h3 className="text-xl font-bold text-gray-900 mb-2">Failed to load dashboard</h3>
-          <p className="text-gray-600 mb-6">{error}</p>
+          <p className="text-gray-600 mb-6 break-words">{error}</p>
           <div className="space-y-3">
             <button 
-              onClick={fetchDashboardData}
+              onClick={() => {
+                setError('');
+                fetchSites();
+              }}
               className="w-full px-6 py-2 bg-[#FDC726] text-gray-900 rounded-lg font-semibold hover:bg-[#e5b520] transition-colors"
             >
               Try Again
@@ -245,23 +276,38 @@ const Dashboard = () => {
     );
   }
 
-  if (!dashboardData) {
+  // No sites - show welcome message
+  if (sites.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
         <div className="text-center max-w-md">
           <div className="w-20 h-20 bg-gradient-to-br from-[#FDC726] to-[#e5b520] rounded-2xl flex items-center justify-center mx-auto mb-6">
-            <Eye className="w-10 h-10 text-white" />
+            <Globe className="w-10 h-10 text-white" />
           </div>
           <h3 className="text-2xl font-bold text-gray-900 mb-3">Welcome to Trackless!</h3>
           <p className="text-gray-600 mb-6">
             You haven't added any sites yet. Add your first site to start tracking analytics.
           </p>
           <button 
-            onClick={() => window.location.href = '/dashboard'} // Navigate to sites page
+            onClick={() => {
+              // This should navigate to the sites page in your app
+              // For now, it reloads which should trigger the DashboardLayout
+              window.location.reload();
+            }}
             className="px-8 py-3 bg-[#FDC726] text-gray-900 rounded-xl font-semibold hover:bg-[#e5b520] transition-colors shadow-sm"
           >
             Add Your First Site
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!dashboardData) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600">No data available</p>
         </div>
       </div>
     );
@@ -281,6 +327,22 @@ const Dashboard = () => {
             </div>
             
             <div className="flex items-center gap-3">
+              {/* Site Selector - Only show if multiple sites */}
+              {sites.length > 1 && (
+                <select 
+                  value={selectedSiteId || ''}
+                  onChange={(e) => setSelectedSiteId(e.target.value)}
+                  className="px-4 py-2.5 bg-white border-2 border-gray-200 rounded-xl text-gray-700 font-medium focus:outline-none focus:border-[#FDC726] transition-colors"
+                >
+                  {sites.map((site) => (
+                    <option key={site._id} value={site._id}>
+                      {site.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+              
+              {/* Date Range Selector */}
               <select 
                 value={dateRange}
                 onChange={(e) => setDateRange(e.target.value)}
@@ -338,25 +400,31 @@ const Dashboard = () => {
             </div>
             
             <div className="h-64 flex items-end gap-3">
-              {dashboardData.charts.pageviewsOverTime.map((item, index) => (
-                <div key={index} className="flex-1 flex flex-col gap-2">
-                  <div className="relative flex-1 flex flex-col justify-end gap-1">
-                    <div 
-                      className="bg-gradient-to-t from-[#FDC726] to-[#e5b520] rounded-t-lg hover:opacity-80 transition-opacity cursor-pointer"
-                      style={{ height: `${(item.pageviews / maxValue) * 100}%` }}
-                      title={`Views: ${item.pageviews}`}
-                    />
-                    <div 
-                      className="bg-gray-300 rounded-t-lg hover:opacity-80 transition-opacity cursor-pointer"
-                      style={{ height: `${(item.uniqueVisitors / maxValue) * 100}%` }}
-                      title={`Visitors: ${item.uniqueVisitors}`}
-                    />
+              {dashboardData.charts.pageviewsOverTime.length > 0 ? (
+                dashboardData.charts.pageviewsOverTime.map((item, index) => (
+                  <div key={index} className="flex-1 flex flex-col gap-2">
+                    <div className="relative flex-1 flex flex-col justify-end gap-1">
+                      <div 
+                        className="bg-gradient-to-t from-[#FDC726] to-[#e5b520] rounded-t-lg hover:opacity-80 transition-opacity cursor-pointer"
+                        style={{ height: `${(item.pageviews / maxValue) * 100}%` }}
+                        title={`Views: ${item.pageviews}`}
+                      />
+                      <div 
+                        className="bg-gray-300 rounded-t-lg hover:opacity-80 transition-opacity cursor-pointer"
+                        style={{ height: `${(item.uniqueVisitors / maxValue) * 100}%` }}
+                        title={`Visitors: ${item.uniqueVisitors}`}
+                      />
+                    </div>
+                    <span className="text-xs text-gray-500 text-center font-medium">
+                      {new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </span>
                   </div>
-                  <span className="text-xs text-gray-500 text-center font-medium">
-                    {new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                  </span>
+                ))
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-400">
+                  No data available
                 </div>
-              ))}
+              )}
             </div>
           </div>
 
