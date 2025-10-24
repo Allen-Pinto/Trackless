@@ -40,6 +40,8 @@ const Dashboard = () => {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
+  const [sites, setSites] = useState<any[]>([]);
   const { user } = useAuth();
 
   const API_URL = import.meta.env.VITE_API_URL || 'https://trackless-fxoj.onrender.com';
