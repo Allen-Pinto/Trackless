@@ -1,4 +1,4 @@
-# 🎯 Trackless Analytics
+# Trackless Analytics
 
 > Privacy-first, cookie-free web analytics platform built with Node.js, Express, and MongoDB.
 
